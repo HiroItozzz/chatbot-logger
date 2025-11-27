@@ -1,15 +1,16 @@
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 import json
 from datetime import datetime, timedelta 
+from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 
 
 load_dotenv()
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")
 
 
-AI_LIST = ["Claude", "Deepseek", "ChatGPT", "Gemini", "Grok"]
 
 
 ### 自動取得に変更予定 ###
@@ -21,6 +22,8 @@ INPUT_PATH = Path(r"E:\Dev\Projects\chatbot-logger\sample\Claude-Git LF!CRLF lin
 
 def json_formatter(data: dict) -> list:
     logs = []
+    AI_LIST = ["Claude"]
+
 
     dates_meta = data["metadata"]["dates"]
     format_meta = '%m/%d/%Y %H:%M:%S'

@@ -80,6 +80,8 @@ python-dotenv==1.2.1
     # via -r requirements.ini
 pytokens==0.3.0
     # via black
+pyyaml==6.0.3
+    # via -r requirements.ini
 requests==2.32.5
     # via google-genai
 rsa==4.9.1

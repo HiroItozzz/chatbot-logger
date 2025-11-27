@@ -1,18 +1,29 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import yaml
 from google import genai
 from google.genai import types
 
-load_dotenv()
-API_KEY = os.getenv('GEMINI_API_KEY', "").strip()
-DEBUG = os.getenv('DEBUG', 'False').lower() in ("true", "1", "t")
 
-CUSTOM_PROMPT = "以下の一日の対話型AIとのやり取りの内容をプログラミングの学習記録としてブログに上げようと思います。日本語で要約し、2000字以内で文章化してください。:" 
+
+load_dotenv()
+config_path = Path('config.yaml')
+config = yaml.safe_load(config_path.read_text(encoding='utf-8'))
+
+DEBUG = config['other']['debug'].lower() in ("true", "1", "t")
+
+
+API_KEY = os.getenv('GEMINI_API_KEY', "").strip()
+
+CUSTOM_PROMPT = config['ai']['prompt']
+MODEL = config['ai']['model']
+LEVEL = config['ai']['thoughts_level']
+
 
 TEXT = ""
 
-def get_summary_from_gemini(text: str, api_key: str, custom_prompt: str = CUSTOM_PROMPT) -> str:
+def summary_from_gemini(text: str, api_key: str,  model: str = "gemini-2.5-flash", thoughts_level: int = 0, prompt: str = "please summarize the following conversation for a blog article. Keep it under 200 words: ") -> list[str, int, int]:
 
     # The client gets the API key from the environment variable `GEMINI_API_KEY`.
     client = genai.Client(API_KEY)
@@ -23,10 +34,22 @@ def get_summary_from_gemini(text: str, api_key: str, custom_prompt: str = CUSTOM
     # Turn on dynamic thinking:
     # thinking_config=types.ThinkingConfig(thinking_budget=-1)
     response = client.models.generate_content(
-        model="gemini-2.5-flash", contents=f"",
+        model="gemini-2.5-flash", contents=f"{prompt}\n\n{text}",
         config=types.GenerateContentConfig(
-            thinking_config=types.ThinkingConfig(thinking_budget=0) # Disables thinking
+            thinking_config=types.ThinkingConfig(thinking_budget=thoughts_level) # disables dynamic thinking for default
             )
         )
-    print(response.text)
-    return response.text
+    
+    input_token = response.usage_metadata.thoughts_token_count
+    output_token = response.usage_metadata.candidates_token_count
+    message = (
+        "static thinking" if thoughts_level == 0 
+        else "dynamic thinking" if thoughts_level == -1 
+        else f"thoughts limit: {thoughts_level}"
+    )
+
+    print(f"Got your summary from AI: {response.text}")
+    print("Input tokens:", input_token, "Thoughts level:", message)
+    print("Output tokens:", output_token)
+
+    return [response.text, input_token, output_token]
