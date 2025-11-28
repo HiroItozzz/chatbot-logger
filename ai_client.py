@@ -21,13 +21,45 @@ PROMPT = config['ai']['prompt']
 MODEL = config['ai']['model']
 LEVEL = config['ai']['thoughts_level']
 
-
 TEXT = ""
 
-def summary_from_gemini(text: str, api_key: str,  model: str = "gemini-2.5-flash", thoughts_level: int = 0, prompt: str = "please summarize the following conversation for a blog article. Keep it under 200 words: ") -> list[str, int, int]:
 
-    # The client gets the API key from the environment variable `GEMINI_API_KEY`.
-    client = genai.Client(api_key=API_KEY)
+class Gemini_fee:
+    def __init__(self):
+        self.fees = {
+            'gemini-2.5-flash': {
+                'input': 0.03,   # $per 1M tokens
+                'output': 2.5
+            },
+            'gemini-2.5-pro': {
+                'under 0.2M': {
+                    'input': 1.25,
+                    'output': 10.00
+                },
+                'over 0.2M': {
+                    'input': 2.5,
+                    'output': 15
+                    }
+            }
+        }
+    
+    def calculate(self, model: str, token_type: str, tokens: int) -> float:
+        if model == 'gemini-2.5-pro':
+            base_fees = self.fees['gemini-2.5-pro']
+            if tokens <= 200000:
+                return tokens * base_fees['under 0.2M'][token_type]
+            else:
+                return tokens * base_fees['over 0.2M'][token_type]
+
+        else:
+            return tokens * self.fees[model][token_type]
+
+
+
+def summary_from_gemini(conversation: str, api_key: str,  model: str = "gemini-2.5-flash", thoughts_level: int = 0, custom_prompt: str = "please summarize the following conversation for a blog article. Keep it under 200 words: ") -> list[str, int, int]:
+
+    # The client gets the API key from the environment variable `GEMINI_API_KEY` automatically.
+    client = genai.Client(api_key)
 
     # Turn off thinking:
     # thinking_config=types.ThinkingConfig(thinking_budget=0)
@@ -38,7 +70,7 @@ def summary_from_gemini(text: str, api_key: str,  model: str = "gemini-2.5-flash
     for i in range(max_retries):        
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash", contents=f"{prompt}\n\n{text}",
+                model="gemini-2.5-flash", contents=f"{custom_prompt}\n\n{conversation}",
                 config=types.GenerateContentConfig(
                     thinking_config=types.ThinkingConfig(thinking_budget=thoughts_level) # disables dynamic thinking for default
                     )
@@ -51,17 +83,20 @@ def summary_from_gemini(text: str, api_key: str,  model: str = "gemini-2.5-flash
             else:
                 raise
     
-
-    input_token = response.usage_metadata.thoughts_token_count
-    output_token = response.usage_metadata.candidates_token_count
     message = (
         "static thinking" if thoughts_level == 0 
         else "dynamic thinking" if thoughts_level == -1 
         else f"thoughts limit: {thoughts_level}"
     )
 
+    input_tokens = response.usage_metadata.thoughts_token_count
+    output_tokens = response.usage_metadata.candidates_token_count
+
+    input_fee = Gemini_fee().calculate(model,token_type="input", tokens=input_tokens)
+    output_fee = Gemini_fee().calculate(model, "output", output_tokens)
+
     if DEBUG:
         print(f"Got your summary from AI: {response.text[:100]}")
-        print(f"Input tokens: {input_token}, Thoughts level: {message} \nOutput tokens:, {output_token}")
+        print(f"Input tokens: {input_tokens},fee: {input_fee},  Output tokens:, {output_tokens}, fee: {output_fee}\nThoughts level: {message} ")
 
-    return response.text, input_token, output_token
+    return response.text, input_tokens, output_tokens

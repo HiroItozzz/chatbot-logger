@@ -20,10 +20,10 @@ INPUT_PATH = Path(r"E:\Dev\Projects\chatbot-logger\sample\Claude-Git LF!CRLF lin
 ####################
 
 
-def json_formatter(data: dict) -> list:
+def json_formatter(raw_data: str, ai_name: str) -> list:
     logs = []
-    AI_LIST = ["Claude"]
 
+    data = json.loads(raw_data)
 
     dates_meta = data["metadata"]["dates"]
     format_meta = '%m/%d/%Y %H:%M:%S'
@@ -31,12 +31,7 @@ def json_formatter(data: dict) -> list:
     created_datetime = datetime.strptime((dates_meta.get("created")), format_meta)    # start time of the chat
     updated_datetime = datetime.strptime((dates_meta.get("updated")), format_meta)    # updated time of the chat
 
-    ai_name = "Unknown AI"
-    for name in AI_LIST:
-        if name.lower() in data["metadata"].get("powered_by").lower():
-            ai_name = name
-            break
-
+     
     latest_datetime = created_datetime
 
     for message in data["messages"]:
