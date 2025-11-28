@@ -1,26 +1,29 @@
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 import json
 from datetime import datetime, timedelta 
+from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 
 
 load_dotenv()
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")
 
 
-AI_LIST = ["Claude", "ChatGPT", "Deepseek", "Gemini", "Grok"]
 
 
 ### 自動取得に変更予定 ###
 INPUT_DIR = ""
 
-INPUT_PATH = Path(r"E:\Dev\Projects\chatbot-logger\sample\Claude-ターミナルのグラフィックスドライバー問題 (1).json")
+INPUT_PATH = Path(r"E:\Dev\Projects\chatbot-logger\sample\Claude-Git LF!CRLF line ending issues across platforms (1).json")
 ####################
 
 
-def json_formatter(data: dict) -> list:
+def json_formatter(raw_data: str, ai_name: str) -> list:
     logs = []
+
+    data = json.loads(raw_data)
 
     dates_meta = data["metadata"]["dates"]
     format_meta = '%m/%d/%Y %H:%M:%S'
@@ -28,12 +31,7 @@ def json_formatter(data: dict) -> list:
     created_datetime = datetime.strptime((dates_meta.get("created")), format_meta)    # start time of the chat
     updated_datetime = datetime.strptime((dates_meta.get("updated")), format_meta)    # updated time of the chat
 
-    ai_name = "Unknown AI"
-    for name in AI_LIST:
-        if name.lower() in data["metadata"].get("powered_by").lower():
-            ai_name = name
-            break
-
+     
     latest_datetime = created_datetime
 
     for message in data["messages"]:
@@ -78,5 +76,5 @@ if __name__ == "__main__":
     output_path.write_text(output_texts, encoding="utf-8")
         
     if DEBUG:
-        print(output_texts)
+        print(f"output_text loaded!!: {output_texts[:50]}")
         exit()
