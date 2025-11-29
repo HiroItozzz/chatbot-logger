@@ -1,17 +1,17 @@
+import csv
+import json
 import os
-from pathlib import Path
-import json, csv
 import time
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
+from pathlib import Path
+
 import yaml
+import yfinance as yf
+from ai_client import Gemini_fee, summary_from_gemini
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-import yfinance as yf
-
 from uploader import json_formatter
-from ai_client import summary_from_gemini, Gemini_fee
-
 
 load_dotenv(override=True)
 config_path = Path("config.yaml")

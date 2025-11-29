@@ -1,11 +1,11 @@
 import os
-from pathlib import Path
 import xml.etree.ElementTree as ET
+from pathlib import Path
+
 import xmltodict
 import yaml
 from dotenv import load_dotenv
 from requests_oauthlib import OAuth1Session
-
 
 load_dotenv(override=True)
 config_path = Path("config.yaml")
