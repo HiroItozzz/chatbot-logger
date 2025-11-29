@@ -11,7 +11,6 @@ def test_json_loader():
     result = jl.json_loader(sample_path)
     assert isinstance(result, str)
     assert len(result) > 0
-    print(result[:200])
 
 
 if __name__ == "__main__":

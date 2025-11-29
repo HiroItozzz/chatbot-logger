@@ -73,6 +73,6 @@ def json_loader(path: Path) -> str:
         output_path = Path("outputs/test_json_loader.txt")
         output_path.parent.mkdir(exist_ok=True)
         output_path.write_text(conversation, encoding="utf-8")
-        print(f"テストファイルを出力しました： {output_dir}")
+        print(f"テストファイルを出力しました： {output_path}")
 
     return conversation

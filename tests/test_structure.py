@@ -21,11 +21,10 @@ conversation = INPUT_PATH.read_text()
 model = config["ai"]["model"]
 default_prompt = config["ai"]["prompt"]
 level = config["ai"]["thoughts_level"]
-
-
 prompt = default_prompt + conversation
 
 
+#### format
 """def xml_unparser(
     title: str,
     content: str,
@@ -34,7 +33,6 @@ prompt = default_prompt + conversation
     updated: datetime | None = None,
 ) -> str:
 """
-
 
 class BlogPost(BaseModel):
     title: str = Field(description="ブログのタイトル。")

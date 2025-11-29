@@ -81,7 +81,7 @@ def xml_unparser(
     return ET.tostring(ROOT, encoding="unicode")
 
 
-def uploader(entry_xml: str = None) -> dict:
+def hatena_uploader(entry_xml: str = None) -> dict:
     URL = os.getenv(
         "HATENA_BASE_URL", None
     ).strip()  # https://blog.hatena.ne.jp/{はてなID}/{ブログID}/atom/
@@ -115,7 +115,7 @@ def uploader(entry_xml: str = None) -> dict:
 if __name__ == "__main__":
     if DEBUG:
         entry_xml = xml_unparser("タイトル", "本文のテスト")
-        data = uploader(entry_xml)  # 辞書型
+        data = hatena_uploader(entry_xml)  # 辞書型
 
         print(
             f"投稿に成功しました。\nタイトル：{data["title"]}\n著者：{data["author"]["name"]}\n{"-" * 15}本文{"-" * 15}\n{data["content"]["#text"]}"

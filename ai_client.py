@@ -1,5 +1,6 @@
 import os
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -23,6 +24,14 @@ MODEL = config["ai"]["model"]
 LEVEL = config["ai"]["thoughts_level"]
 
 TEXT = ""
+
+
+class BlogParts(BaseModel):
+    title: str = Field(description="ブログのタイトル。")
+    content: str = Field(description="ブログの本文（マークダウン形式）")
+    categories: List[str] = Field(description="カテゴリー一覧")
+    author: Optional[str] = None
+    updated: Optional[datetime] = None
 
 
 class Gemini_fee:
@@ -51,8 +60,8 @@ def summary_from_gemini(
     api_key: str,
     model: str = "gemini-2.5-pro",
     thoughts_level: int = -1,
-    custom_prompt: str = "please summarize the following conversation for a blog article. Keep it under 200 words: ",
-) -> list[str, int, int, int]:
+    custom_prompt: str = "please summarize the following conversation for my personal blog article. Keep it under 200 words: ",
+) -> tuple[BlogParts, dict]:
 
     if DEBUG:
         print(f"Gemini using API_KEY now: '...{api_key[-5:]}'")
@@ -67,11 +76,15 @@ def summary_from_gemini(
     max_retries = 3
     for i in range(max_retries):
         try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
+            response = client.models.generate_content(  # リクエスト
+                model=model,
                 contents=f"{custom_prompt}\n\n{conversation}",
                 config=types.GenerateContentConfig(
-                    thinking_config=types.ThinkingConfig(thinking_budget=thoughts_level)
+                    thinking_config=types.ThinkingConfig(
+                        thinking_budget=thoughts_level
+                    ),
+                    response_mime_type="application/json",  # 構造化出力
+                    response_json_schema=BlogParts.model_json_schema(),
                 ),
             )
             break
@@ -82,6 +95,8 @@ def summary_from_gemini(
             else:
                 raise
 
+    contents = BlogParts.model_validate_json(response.text)
+
     message = (
         "static thinking"
         if thoughts_level == 0
@@ -91,10 +106,17 @@ def summary_from_gemini(
             else f"thoughts limit: {thoughts_level}"
         )
     )
-
+    ### リファクタ予定 ###
     input_tokens = response.usage_metadata.prompt_token_count
     thoughts_tokens = response.usage_metadata.thoughts_token_count
     output_tokens = response.usage_metadata.candidates_token_count
+    ####################
+
+    stats = {
+        "input_tokens": response.usage_metadata.prompt_token_count,
+        "thoughts_tokens": response.usage_metadata.thoughts_token_count,
+        "output_tokens": response.usage_metadata.candidates_token_count,
+    }
 
     if DEBUG:
         total_output_tokens = thoughts_tokens + output_tokens
@@ -115,4 +137,9 @@ def summary_from_gemini(
                 Thoughts level: {message} "
         )
 
-    return response.text, input_tokens, thoughts_tokens, output_tokens
+    return contents, stats
+
+
+def print_debug_info():
+    """デバッグ部分を移行予定"""
+    pass
