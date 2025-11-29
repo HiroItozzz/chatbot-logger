@@ -97,9 +97,7 @@ if __name__ == "__main__":
     config, API_KEY, PROMPT, MODEL, LEVEL, DEBUG = initialize_config()
 
     ### loader.pyで自動取得に変更予定 ###
-    INPUT_PATH = Path(
-        r"E:\Dev\Projects\chatbot-logger\sample\Claude-Git LF!CRLF line ending issues across platforms (1).json"
-    )
+    INPUT_PATH = Path(r"e:\Downloads\Claude-httpieの基本的な使い方 (1).json")
     ####################
 
     AI_LIST = ["Claude", "Gemini", "ChatGPT"]
@@ -121,7 +119,7 @@ if __name__ == "__main__":
     xml_data = xml_unparser(
         title=blog_parts.title,
         content=blog_parts.content,
-        categories=blog_parts.categories,
+        categories=blog_parts.categories + ["自動投稿", "python", "AtomPub"],
         author=blog_parts.author,
         updated=blog_parts.updated,
     )

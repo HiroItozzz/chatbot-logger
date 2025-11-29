@@ -5,6 +5,10 @@
 AIチャットボットとの対話ログを分析し、学習記録としてブログ投稿するツールです。
 現在はClaudeの対話ログのみ対応、手動実行版です。
 
+# To do: 
+- to do:はてなブログのマークダウン形式の表示不具合
+- yahoo financeの土日の処理
+
 ## ✅ 実装済み機能
 
 - **Claudeログ解析**: Claude ExporterでエクスポートしたJSONファイルを処理
@@ -141,6 +145,11 @@ pip install -r requirements-dev.txt
 
 このプロジェクトは**個人の学習記録自動化**を目的とした開発中のツールです。
 現在の実装は基本機能のプロトタイプ段階で、多くの改善点があります。
+
+### 技術スタック
+- OAuth 1.0a (requests-oauthlib)
+- Gemini API (google-genai)
+- Pydantic (データバリデーション)
 
 ### 既知の課題
 - ハードコードされたファイルパス
