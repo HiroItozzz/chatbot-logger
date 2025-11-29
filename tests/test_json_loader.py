@@ -3,7 +3,7 @@ from pathlib import Path
 import json_loader as jl
 
 sample_path = Path(
-    r"E:\Dev\Projects\chatbot-logger\sample\Claude-Git LF!CRLF line ending issues across platforms (1).json"
+    r"e:\Downloads\Claude-ターミナルのグラフィックスドライバー問題 (2).json"
 )
 
 
