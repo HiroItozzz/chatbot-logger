@@ -4,27 +4,18 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
 
 load_dotenv()
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")
 
 
-### 自動取得に変更予定 ###
-INPUT_DIR = ""
+def json_loader(path: Path) -> list:
+    AI_LIST = ["Claude", "Gemini", "ChatGPT"]
 
-INPUT_PATH = Path(
-    r"E:\Dev\Projects\chatbot-logger\sample\Claude-Git LF!CRLF line ending issues across platforms (1).json"
-)
-####################
+    ai_name = next((p for p in AI_LIST if path.name.startswith(p)), "Unknown AI")
 
-
-def json_loader(raw_data: str, ai_name: str) -> list:
-    logs = []
-
-    data = json.loads(raw_data)
-
+    data_text = path.read_text(encoding="utf-8")
+    data = json.loads(data_text)
     dates_meta = data["metadata"]["dates"]
     format_meta = "%m/%d/%Y %H:%M:%S"
 
@@ -36,6 +27,8 @@ def json_loader(raw_data: str, ai_name: str) -> list:
     )  # updated time of the chat
 
     latest_datetime = created_datetime
+
+    logs = []
 
     for message in data["messages"]:
         timestamp = message.get("time")
@@ -64,21 +57,12 @@ def json_loader(raw_data: str, ai_name: str) -> list:
 
         latest_datetime = text_datetime
 
-    return logs
+    return "\n".join(logs)
 
 
 if __name__ == "__main__":
-    with open(INPUT_PATH, encoding="utf-8") as f:
-        raw_data = json.load(f)
 
-    output_texts = "\n".join(json_loader(raw_data))
-
-    output_dir = Path(os.getenv("OUTPUT_DIR").strip())
-    output_dir.mkdir(exist_ok=True)
-    output_path = output_dir / (INPUT_PATH.stem + ".txt")
-
-    output_path.write_text(output_texts, encoding="utf-8")
-
-    if DEBUG:
-        print(f"output_text loaded!!: {output_texts[:50]}")
-        exit()
+    INPUT_PATH = Path(
+        r"E:\Dev\Projects\chatbot-logger\sample\Claude-Git LF!CRLF line ending issues across platforms (1).json"
+    )
+    print(json_loader(INPUT_PATH)[:200])

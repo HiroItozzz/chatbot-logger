@@ -107,12 +107,7 @@ if __name__ == "__main__":
     )
     ####################
 
-    AI_LIST = ["Claude-"]
-
-    ai_name = next((p for p in AI_LIST if INPUT_PATH.name.startswith(p)), "Unknown AI")
-
-    raw_data = INPUT_PATH.read_text(encoding="utf-8")
-    conversation = "\n".join(json_loader(raw_data, ai_name))
+    conversation = json_loader(INPUT_PATH)
 
     GEMINI_ATTRS = {
         "conversation": conversation,
