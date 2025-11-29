@@ -150,5 +150,7 @@ websockets==15.0.1
     # via
     #   google-genai
     #   yfinance
+xmltodict==1.0.2
+    # via -r requirements.ini
 yfinance==0.2.66
     # via -r requirements.ini
