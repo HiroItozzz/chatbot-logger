@@ -1,7 +1,7 @@
 import os
+
 from dotenv import load_dotenv
 from requests_oauthlib import OAuth1Session
-
 
 load_dotenv()
 
