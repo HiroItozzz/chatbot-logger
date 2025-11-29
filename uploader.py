@@ -1,5 +1,6 @@
 import os
 import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import xmltodict
@@ -18,21 +19,37 @@ entry_xml = r"""<?xml version="1.0" encoding="utf-8"?>
 
 <entry xmlns="http://www.w3.org/2005/Atom"
        xmlns:app="http://www.w3.org/2007/app">
-  <title>初めての投稿</title>
+  <title>TITLE</title>
+  <updated>2013-09-02T11:28:23+09:00</updated>  # 未来の投稿の場合指定
   <author><name>name</name></author>
   <content type="text/plain">
-    pythonでOAuth認証を行いAPIで送信し投稿しています。これからプログラミングの学習記録を自動投稿していく予定。
+    ===========CONTENT===========
   </content>
   <category term="Scala" />
   <app:control>
-    <app:draft>yes</app:draft>
-    <app:preview>no</app:preview>
+    <app:draft>yes</app:draft> # 下書きの場合
+    <app:preview>no</app:preview> #
   </app:control>
 </entry>"""
 
 
-def xml_unparser(title, content, author="", category: dict = {}) -> str:
-    # 実装予定
+def xml_unparser(
+    title: str,
+    content: str,
+    categories: list | None = None,
+    author: str | None = None,
+    updated: datetime | None = None,
+) -> str:
+
+    if categories is None:
+        categories = ["Python", "自動投稿"]
+
+    jst = timezone(timedelta(hours=9))
+    if updated is None:
+        updated = datetime.now(jst) + timedelta(minutes=5)  # デフォルトで5分後に設定
+    elif updated.tzinfo is None:
+        updated = updated.replace(tzinfo=jst)  # timezoneなしの場合jst指定
+
     ROOT = ET.Element(
         "entry",
         attrib={
@@ -40,26 +57,32 @@ def xml_unparser(title, content, author="", category: dict = {}) -> str:
             "xmlns:app": "http://www.w3.org/2007/app",
         },
     )
-
     TITLE = ET.SubElement(ROOT, "title")
-    TITLE.text = title
-
+    UPDATED = ET.SubElement(ROOT, "updated")
     AUTHOR = ET.SubElement(ROOT, "author")
     NAME = ET.SubElement(AUTHOR, "name")
-    NAME.text = author
     CONTENT = ET.SubElement(ROOT, "content", attrib={"type": "text/x-markdown"})
-    CONTENT.text = content
-    ET.SubElement(ROOT, "category", attrib=category)
     CONTROL = ET.SubElement(ROOT, "app:control")
     DRAFT = ET.SubElement(CONTROL, "app:draft")
-    DRAFT.text = "yes"
     PREVIEW = ET.SubElement(CONTROL, "app:preview")
+    for cat in categories:
+        ET.SubElement(ROOT, "category", attrib={"term": cat})
+
+    TITLE.text = title
+
+    UPDATED.text = updated.isoformat()  # timezoneありの場合それに従う
+    NAME.text = author
+    CONTENT.text = content
+    DRAFT.text = "no"
     PREVIEW.text = "no"
+
+    if DEBUG:
+        DRAFT.text = "yes"
 
     return ET.tostring(ROOT, encoding="unicode")
 
 
-def uploader(entry_xml: str = None):
+def uploader(entry_xml: str = None) -> dict:
     URL = os.getenv(
         "HATENA_BASE_URL", None
     ).strip()  # https://blog.hatena.ne.jp/{はてなID}/{ブログID}/atom/
@@ -86,11 +109,9 @@ def uploader(entry_xml: str = None):
 
 if __name__ == "__main__":
     if DEBUG:
-        entry_xml = xml_unparser(
-            "タイトル", "本文のテスト", "Unknown", {"term": "python"}
-        )
+        entry_xml = xml_unparser("タイトル", "本文のテスト")
         data = uploader(entry_xml)  # 辞書型
 
         print(
-            f"投稿に成功しました：\n{'-' * 50}\nタイトル：{data["title"]}\n著者：{data["author"]["name"]}\n本文：\n{data["content"]["#text"]}"
+            f"投稿に成功しました。\nタイトル：{data["title"]}\n著者：{data["author"]["name"]}\n{"-" * 15}本文{"-" * 15}\n{data["content"]["#text"]}"
         )
