@@ -118,5 +118,5 @@ if __name__ == "__main__":
         data = hatena_uploader(entry_xml)  # 辞書型
 
         print(
-            f"投稿に成功しました。\nタイトル：{data["title"]}\n著者：{data["author"]["name"]}\n{"-" * 15}本文{"-" * 15}\n{data["content"]["#text"]}"
+            f"タイトル：{data["title"]}\n著者：{data["author"]["name"]}\n{"-" * 15}本文{"-" * 15}\n{data["content"]["#text"]}"
         )

@@ -55,7 +55,7 @@ class Gemini_fee:
             return tokens * self.fees[model][token_type] / 1000000
 
 
-def summary_from_gemini(
+def get_summary(
     conversation: str,
     api_key: str,
     model: str = "gemini-2.5-pro",

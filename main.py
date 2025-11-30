@@ -3,15 +3,14 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+import ai_client
+import json_loader
+import uploader
 import yaml
 import yfinance as yf
-from ai_client import Gemini_fee, summary_from_gemini
 from dotenv import load_dotenv
-from json_loader import json_loader
-from uploader import hatena_uploader, xml_unparser
 
 
-###### by Claude code #######
 def get_nested_config(config_dict, key_path):
     """ネストした設定値を取得 (例: 'ai.model' -> config['ai']['model'])"""
     keys = key_path.split(".")
@@ -97,12 +96,12 @@ if __name__ == "__main__":
     config, API_KEY, PROMPT, MODEL, LEVEL, DEBUG = initialize_config()
 
     ### loader.pyで自動取得に変更予定 ###
-    INPUT_PATH = Path(r"e:\Downloads\Claude-httpieの基本的な使い方 (1).json")
+    INPUT_PATH = Path(r"sample\sample.json")
     ####################
 
     AI_LIST = ["Claude", "Gemini", "ChatGPT"]
     ai_name = next((p for p in AI_LIST if INPUT_PATH.name.startswith(p)), "Unknown AI")
-    conversation = json_loader(INPUT_PATH)
+    conversation = json_loader.json_loader(INPUT_PATH)
 
     if DEBUG:
         print(f"Your API Key: ...{API_KEY[-5:]} for {MODEL}")
@@ -114,9 +113,9 @@ if __name__ == "__main__":
         "model": MODEL,
         "thoughts_level": LEVEL,
     }
-    blog_parts, stats = summary_from_gemini(**GEMINI_ATTRS)  # GoogleへAPIリクエスト
+    blog_parts, stats = ai_client.get_summary(**GEMINI_ATTRS)  # GoogleへAPIリクエスト
 
-    xml_data = xml_unparser(
+    xml_data = uploader.xml_unparser(
         title=blog_parts.title,
         content=blog_parts.content,
         categories=blog_parts.categories + ["自動投稿", "python", "AtomPub"],
@@ -124,22 +123,25 @@ if __name__ == "__main__":
         updated=blog_parts.updated,
     )
 
-    result = hatena_uploader(xml_data)  # 辞書型で返却
-    print(f"投稿に成功しました。\nタイトル：{result["title"]}")
-    print(f"\n{"-" * 15}本文{"-" * 15}")
-    print(f"{result["content"]["#text"]}")
+    result = uploader.hatena_uploader(xml_data)  # 辞書型で返却
+
+    if DEBUG:
+        print(f"投稿に成功しました。\nタイトル：{result["title"]}")
+        print(f"\n{"-" * 15}本文{"-" * 15}")
+        print(f"{result["content"]["#text"]}")
 
     ####### 関数化？
     i_tokens = stats["input_tokens"]
     th_tokens = stats["thoughts_tokens"]
     o_tokens = stats["output_tokens"]
-    total_output_tokens = th_tokens + o_tokens
 
-    input_fee = Gemini_fee().calculate(MODEL, token_type="input", tokens=i_tokens)
-    thoughts_fee = Gemini_fee().calculate(MODEL, token_type="output", tokens=th_tokens)
-    output_fee = Gemini_fee().calculate(MODEL, token_type="output", tokens=o_tokens)
+    gemini_fee = ai_client.Gemini_fee().calculate
+    input_fee = gemini_fee.calculate(MODEL, token_type="input", tokens=i_tokens)
+    thoughts_fee = gemini_fee.calculate(MODEL, token_type="output", tokens=th_tokens)
+    output_fee = gemini_fee.calculate(MODEL, token_type="output", tokens=o_tokens)
+
     total_output_fee = thoughts_fee + output_fee
-    total_fee = input_fee + thoughts_fee + output_fee
+    total_fee = input_fee + total_output_fee
     ###############
 
     # 為替レートを取得
