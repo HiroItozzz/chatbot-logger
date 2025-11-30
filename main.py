@@ -12,7 +12,7 @@ import yaml
 import yfinance as yf
 from dotenv import load_dotenv
 
-# .envでログレベル判定。ただし最終設定はメイン処理内で実行
+# .envでログレベル判定。ただし最終決定はconfigを見てメイン処理内で実行
 try:
     IS_DEBUG_MODE_ENV = os.environ.get("DEBUG", "False").lower() in ("true", "t", "1")
     initial_level = logging.DEBUG if IS_DEBUG_MODE_ENV else logging.INFO

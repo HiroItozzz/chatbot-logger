@@ -14,16 +14,12 @@ load_dotenv(override=True)
 config_path = Path("config.yaml")
 config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
-DEBUG = config["other"]["debug"].lower() in ("true", "1", "t")
-
-
 API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-
 PROMPT = config["ai"]["prompt"]
 MODEL = config["ai"]["model"]
 LEVEL = config["ai"]["thoughts_level"]
 
-TEXT = ""
+DEBUG = config["other"]["debug"].lower() in ("true", "1", "t")
 
 
 class BlogParts(BaseModel):
@@ -142,4 +138,8 @@ def get_summary(
 
 def print_debug_info():
     """デバッグ部分を移行予定"""
+    pass
+
+
+if __name__ == "__main__":
     pass
