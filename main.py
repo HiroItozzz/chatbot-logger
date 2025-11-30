@@ -12,11 +12,6 @@ import yaml
 import yfinance as yf
 from dotenv import load_dotenv
 
-### uploader.pyで自動取得に変更予定 ###
-INPUT_PATH = Path(input("ファイルのパスを入力してください："))
-####################
-
-
 # .envでログレベル判定。ただし最終決定はconfigを見てメイン処理内で実行
 try:
     IS_DEBUG_MODE_ENV = os.environ.get("DEBUG", "False").lower() in ("true", "t", "1")
@@ -139,6 +134,17 @@ if __name__ == "__main__":
     logger.info("================================================")
     logger.info(f"アプリケーションが起動しました。DEBUGモード: {DEBUG}")
 
+    ### uploader.pyで自動取得に変更予定 ###
+    # コマンドライン引数からファイル名を取得する
+    if len(sys.argv) > 1:
+        INPUT_PATH = Path(sys.argv[1])
+        logger.info(f"処理を開始します: {INPUT_PATH.name}")
+    else:
+        # 引数がなければエラーメッセージを表示
+        print("エラー: ファイル名が正しくありません。実行を終了します")
+        sys.exit(1)
+    ####################################
+
     try:
         AI_LIST = ["Claude", "Gemini", "ChatGPT"]
         ai_name = next(
@@ -167,14 +173,19 @@ if __name__ == "__main__":
             updated=blog_parts.updated,
         )
 
-        result = uploader.hatena_uploader(xml_data)  # 辞書型で返却
+        result_dict = uploader.hatena_uploader(xml_data)  # 辞書型で返却
+        is_draft = result_dict.get("app:control").get("app:draft") == "yes"
+        entry_url = ""
+        entry_title = (blog_parts.title,)
+        entry_content = (blog_parts.content[:20],)
 
-        logger.debug(f"はてなブログへの投稿に成功しました。")
-        logger.debug("-" * 50)
-        logger.debug(f"投稿タイトル：{result["title"]}")
-        logger.debug(f"\n{"-" * 20}投稿本文{"-" * 20}")
-        logger.debug(f"{result["content"]["#text"][:200]}")
-        logger.debug("-" * 50)
+        logger.info(f"はてなブログへの投稿に成功しました。")
+        logger.info(f"URL: {entry_url}")
+        logger.info("-" * 50)
+        logger.info(f"投稿タイトル：{result_dict["title"]}")
+        logger.info(f"\n{"-" * 20}投稿本文{"-" * 20}")
+        logger.info(f"{result_dict["content"]["#text"][:100]}")
+        logger.info("-" * 50)
 
         i_tokens = stats["input_tokens"]
         th_tokens = stats["thoughts_tokens"]
@@ -200,7 +211,10 @@ if __name__ == "__main__":
             "timestamp",
             "conversation",
             "AI_name",
-            "output_text",
+            "entry_URL",
+            "is_draft",
+            "entry_title",
+            "entry_content",
             "custom_prompt",
             "model",
             "thinking_budget",
@@ -213,13 +227,17 @@ if __name__ == "__main__":
             "output_fee",
             "total_fee (USD)",
             "total_fee (JPY)",
+            "api_key",
         ]
 
         record = [
             datetime.now().isoformat(),
             INPUT_PATH.name,
             ai_name,
-            blog_parts.content[:20],
+            entry_url,
+            is_draft,
+            entry_title,
+            entry_content[:20],
             PROMPT,
             MODEL,
             LEVEL,
@@ -232,12 +250,13 @@ if __name__ == "__main__":
             output_fee,
             total_fee,
             total_JPY,
+            API_KEY[-5:],
         ]
 
         output_dir = Path(config["paths"]["output_dir"].strip())
         output_dir.mkdir(exist_ok=True)
         summary_path = output_dir / (f"summary_{INPUT_PATH.stem}.txt")
-        csv_path = output_dir / "record.csv"
+        csv_path = output_dir / "record_test.csv"
 
         append_csv(csv_path, columns, record, logger)
 
@@ -246,8 +265,9 @@ if __name__ == "__main__":
 
     except Exception as e:
         logger.critical(
-            "重大なエラーが発生しました。3秒後に実行を終了します。", exc_info=True
+            "重大なエラーが発生しました。app.logで詳細を確認してください。\n実行を終了します。",
+            exc_info=True,
         )
-        sys.exit(3)
+        sys.exit(1)
 
     logger.info("アプリケーションは正常に終了しました。")
