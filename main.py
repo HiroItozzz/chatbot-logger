@@ -13,7 +13,7 @@ import yfinance as yf
 from dotenv import load_dotenv
 
 ### uploader.pyで自動取得に変更予定 ###
-INPUT_PATH = Path(r"E:\Downloads\Gemini-Geminiの挨拶と提供サービス.json")
+INPUT_PATH = Path(input("ファイルのパスを入力してください："))
 ####################
 
 

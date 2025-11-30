@@ -30,6 +30,14 @@ class BlogParts(BaseModel):
     updated: Optional[datetime] = None
 
 
+class BlogParts(BaseModel):
+    title: str = Field(description="ブログのタイトル。")
+    content: str = Field(description="ブログの本文（マークダウン形式）")
+    categories: List[str] = Field(description="カテゴリー一覧")
+    author: Optional[str] = None
+    updated: Optional[datetime] = None
+
+
 class Gemini_fee:
     def __init__(self):
         self.fees = {
