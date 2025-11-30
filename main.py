@@ -12,6 +12,11 @@ import yaml
 import yfinance as yf
 from dotenv import load_dotenv
 
+### uploader.pyで自動取得に変更予定 ###
+INPUT_PATH = Path(r"E:\Downloads\Gemini-Geminiの挨拶と提供サービス.json")
+####################
+
+
 # .envでログレベル判定。ただし最終決定はconfigを見てメイン処理内で実行
 try:
     IS_DEBUG_MODE_ENV = os.environ.get("DEBUG", "False").lower() in ("true", "t", "1")
@@ -134,10 +139,6 @@ if __name__ == "__main__":
     logger.info("================================================")
     logger.info(f"アプリケーションが起動しました。DEBUGモード: {DEBUG}")
 
-    ### loader.pyで自動取得に変更予定 ###
-    INPUT_PATH = Path(r"sample\sample.json")
-    ####################
-
     try:
         AI_LIST = ["Claude", "Gemini", "ChatGPT"]
         ai_name = next(
@@ -154,9 +155,9 @@ if __name__ == "__main__":
             "model": MODEL,
             "thoughts_level": LEVEL,
         }
-        blog_parts, stats = ai_client.get_summary(
-            **GEMINI_ATTRS
-        )  # GoogleへAPIリクエスト
+
+        # GoogleへAPIリクエスト
+        blog_parts, stats = ai_client.get_summary(**GEMINI_ATTRS)
 
         xml_data = uploader.xml_unparser(
             title=blog_parts.title,
@@ -196,19 +197,21 @@ if __name__ == "__main__":
         total_JPY = total_fee * dy_rate
 
         columns = [
-            "timestamp" "conversation",
+            "timestamp",
+            "conversation",
             "AI_name",
             "output_text",
             "custom_prompt",
             "model",
             "thinking_budget",
+            "input_letter_count",
             "input_tokens",
             "input_fee",
             "thoughts_tokens",
             "thoughts_fee",
             "output_tokens",
             "output_fee",
-            "total_fee",
+            "total_fee (USD)",
             "total_fee (JPY)",
         ]
 
@@ -216,10 +219,11 @@ if __name__ == "__main__":
             datetime.now().isoformat(),
             INPUT_PATH.name,
             ai_name,
-            blog_parts.content,
+            blog_parts.content[:20],
             PROMPT,
             MODEL,
             LEVEL,
+            len(conversation),
             i_tokens,
             input_fee,
             th_tokens,
@@ -233,7 +237,7 @@ if __name__ == "__main__":
         output_dir = Path(config["paths"]["output_dir"].strip())
         output_dir.mkdir(exist_ok=True)
         summary_path = output_dir / (f"summary_{INPUT_PATH.stem}.txt")
-        csv_path = output_dir / "record_test.csv"
+        csv_path = output_dir / "record.csv"
 
         append_csv(csv_path, columns, record, logger)
 

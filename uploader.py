@@ -12,7 +12,7 @@ load_dotenv(override=True)
 config_path = Path("config.yaml")
 config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
-DEBUG = config["other"]["debug"].lower() in ("true", "1", "t")
+DEBUG = os.getenv("DEBUG", "").lower() in ("true", "1", "t")
 
 
 def xml_unparser(
