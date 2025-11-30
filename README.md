@@ -2,12 +2,12 @@
 
 **🚧 開発中のプロジェクト 🚧**
 
-AIチャットボットとの対話ログを分析し、学習記録としてブログ投稿するツールです。
-現在はClaudeの対話ログのみ対応、手動実行版です。
+AIチャットボットとの対話ログを分析し、学習記録としてブログ投稿するツール。
+Claude. ChatGPT, Geminiからchrome下記拡張機能でエクスポートしたjsonに対応
+現在はjsonのパスを入力→要約→ブログ投稿まで自動化しています。
 
-# To do: 
-- to do:はてなブログのマークダウン形式の表示不具合
-- yahoo financeの土日の処理
+
+
 
 ## ✅ 実装済み機能
 
@@ -19,7 +19,6 @@ AIチャットボットとの対話ログを分析し、学習記録としてブ
 
 ## 🔧 開発予定・課題
 
-- [ ] **ChatGPT・Geminiログ対応** - 現在はClaude形式のみ
 - [ ] **フォルダ監視機能** - ファイル追加時の自動実行
 - [ ] **バッチ処理** - 複数ファイルの一括処理
 - [ ] **ログレベル改善** - 構造化ログ・デバッグ機能強化
@@ -29,11 +28,10 @@ AIチャットボットとの対話ログを分析し、学習記録としてブ
 ## 📋 必要な準備
 
 ### 1. Chrome拡張機能のインストール
-**現在はClaudeのみ対応**：
 
 - **Claude Exporter**: https://chromewebstore.google.com/detail/claude-exporter-save-clau/elhmfakncmnghlnabnolalcjkdpfjnin
-
-※ ChatGPT Exporterは実装予定
+- **Gemini Exporter**: https://chromewebstore.google.com/detail/gem-chat-exporter-gemini/jfepajhaapfonhhfjmamediilplchakk
+- **ChatGPT Exporter**: https://chromewebstore.google.com/detail/chatgpt-exporter-chatgpt/ilmdofdhpnhffldihboadndccenlnfll
 
 ### 2. API認証情報の取得
 
