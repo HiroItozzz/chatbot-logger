@@ -7,3 +7,5 @@ requirements-dev.ini
 sample/
 outputs/
 *.csv
+*.log
+.pytest_cache

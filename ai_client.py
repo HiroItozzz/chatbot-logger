@@ -14,16 +14,20 @@ load_dotenv(override=True)
 config_path = Path("config.yaml")
 config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
-DEBUG = config["other"]["debug"].lower() in ("true", "1", "t")
-
-
 API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-
 PROMPT = config["ai"]["prompt"]
 MODEL = config["ai"]["model"]
 LEVEL = config["ai"]["thoughts_level"]
 
-TEXT = ""
+DEBUG = config["other"]["debug"].lower() in ("true", "1", "t")
+
+
+class BlogParts(BaseModel):
+    title: str = Field(description="ブログのタイトル。")
+    content: str = Field(description="ブログの本文（マークダウン形式）")
+    categories: List[str] = Field(description="カテゴリー一覧")
+    author: Optional[str] = None
+    updated: Optional[datetime] = None
 
 
 class BlogParts(BaseModel):
@@ -55,7 +59,7 @@ class Gemini_fee:
             return tokens * self.fees[model][token_type] / 1000000
 
 
-def summary_from_gemini(
+def get_summary(
     conversation: str,
     api_key: str,
     model: str = "gemini-2.5-pro",
@@ -142,4 +146,8 @@ def summary_from_gemini(
 
 def print_debug_info():
     """デバッグ部分を移行予定"""
+    pass
+
+
+if __name__ == "__main__":
     pass

@@ -11,7 +11,7 @@ from google.genai import types
 parent_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(parent_dir))
 
-from ai_client import summary_from_gemini
+from ai_client import get_summary
 
 # これでインポート可能
 from json_loader import json_loader
@@ -41,7 +41,7 @@ print(f"存在する: {INPUT_PATH.exists()}")
 TEXT = INPUT_PATH.read_text(encoding="utf-8")
 
 
-summary, input_token, output_token = summary_from_gemini(
+summary, input_token, output_token = get_summary(
     text=TEXT, api_key=API_KEY, prompt=PROMPT, model=MODEL, thoughts_level=-1
 )
 

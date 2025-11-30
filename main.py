@@ -1,15 +1,35 @@
 import csv
+import logging
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
+import ai_client
+import json_loader
+import uploader
 import yaml
 import yfinance as yf
-from ai_client import Gemini_fee, summary_from_gemini
 from dotenv import load_dotenv
-from json_loader import json_loader
-from uploader import hatena_uploader, xml_unparser
 
+# .envでログレベル判定。ただし最終決定はconfigを見てメイン処理内で実行
+try:
+    IS_DEBUG_MODE_ENV = os.environ.get("DEBUG", "False").lower() in ("true", "t", "1")
+    initial_level = logging.DEBUG if IS_DEBUG_MODE_ENV else logging.INFO
+except Exception:
+    initial_level = logging.INFO
+
+# 設定
+logging.basicConfig(
+    level=initial_level,
+    format="%(asctime)s - %(levelname)s - [%(name)s] - %(message)s",
+    handlers=[
+        logging.FileHandler("app.log", encoding="utf-8"),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+
+###########################################################
 
 
 def get_nested_config(config_dict, key_path):
@@ -77,117 +97,153 @@ def initialize_config():
     return config, API_KEY, PROMPT, MODEL, LEVEL, DEBUG
 
 
+############################################################
 
-def append_csv(path: Path, columns, row: list):
+
+def append_csv(path: Path, columns, row: list, logger: logging.Logger):
     """pathがなければ作成し、CSVに1行追記"""
-    if not path.exists():
-        with path.open("w", newline="", encoding="utf-8-sig") as f:
-            writer = csv.writer(f)
-            writer.writerow(columns)
+    try:
+        if not path.exists():
+            with path.open("w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f)
+                writer.writerow(columns)
+        logger.debug(f"新しいCSVファイルを作成しました: {path}")
 
-    with path.open("a", newline="", encoding="utf-8-sig") as f:
-        writer = csv.writer(f)
-        writer.writerow(row)
+        with path.open("a", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f)
+            writer.writerow(row)
+        logger.debug(f"CSVにデータを追記しました: {path.name}")
+    except Exception:
+        logger.exception("CSVファイルへの書き込み中にエラーが発生しました。")
 
 
 if __name__ == "__main__":
-    # 設定初期化
-    config, API_KEY, PROMPT, MODEL, LEVEL, DEBUG = initialize_config()
+
+    # config.yamlで設定初期化
+    try:
+        config, API_KEY, PROMPT, MODEL, LEVEL, DEBUG = initialize_config()
+    except Exception as e:
+        print(f"CONFIG LOADING ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # configでDEBUGモードの場合のみ.envによる設定を上書き
+    if DEBUG:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    logger = logging.getLogger(__name__)
+    logger.info("================================================")
+    logger.info(f"アプリケーションが起動しました。DEBUGモード: {DEBUG}")
 
     ### loader.pyで自動取得に変更予定 ###
-    INPUT_PATH = Path(
-        r"E:\Dev\Projects\chatbot-logger\sample\Claude-Git LF!CRLF line ending issues across platforms (1).json"
-    )
+    INPUT_PATH = Path(r"sample\sample.json")
     ####################
 
-    AI_LIST = ["Claude", "Gemini", "ChatGPT"]
-    ai_name = next((p for p in AI_LIST if INPUT_PATH.name.startswith(p)), "Unknown AI")
-    conversation = json_loader(INPUT_PATH)
+    try:
+        AI_LIST = ["Claude", "Gemini", "ChatGPT"]
+        ai_name = next(
+            (p for p in AI_LIST if INPUT_PATH.name.startswith(p)), "Unknown AI"
+        )
+        conversation = json_loader.json_loader(INPUT_PATH)
 
-    if DEBUG:
-        print(f"Your API Key: ...{API_KEY[-5:]} for {MODEL}")
+        logger.info(f"Your API Key: ...{API_KEY[-5:]} for {MODEL}")
 
-    GEMINI_ATTRS = {
-        "conversation": conversation,
-        "api_key": API_KEY,
-        "custom_prompt": PROMPT,
-        "model": MODEL,
-        "thoughts_level": LEVEL,
-    }
-    blog_parts, stats = summary_from_gemini(**GEMINI_ATTRS)  # GoogleへAPIリクエスト
+        GEMINI_ATTRS = {
+            "conversation": conversation,
+            "api_key": API_KEY,
+            "custom_prompt": PROMPT,
+            "model": MODEL,
+            "thoughts_level": LEVEL,
+        }
+        blog_parts, stats = ai_client.get_summary(
+            **GEMINI_ATTRS
+        )  # GoogleへAPIリクエスト
 
-    xml_data = xml_unparser(
-        title=blog_parts.title,
-        content=blog_parts.content,
-        categories=blog_parts.categories,
-        author=blog_parts.author,
-        updated=blog_parts.updated,
-    )
+        xml_data = uploader.xml_unparser(
+            title=blog_parts.title,
+            content=blog_parts.content,
+            categories=blog_parts.categories + ["自動投稿", "python", "AtomPub"],
+            author=blog_parts.author,
+            updated=blog_parts.updated,
+        )
 
-    result = hatena_uploader(xml_data)  # 辞書型で返却
-    print(f"投稿に成功しました。\nタイトル：{result["title"]}")
-    print(f"\n{"-" * 15}本文{"-" * 15}")
-    print(f"{result["content"]["#text"]}")
+        result = uploader.hatena_uploader(xml_data)  # 辞書型で返却
 
-    ####### 関数化？
-    i_tokens = stats["input_tokens"]
-    th_tokens = stats["thoughts_tokens"]
-    o_tokens = stats["output_tokens"]
-    total_output_tokens = th_tokens + o_tokens
+        logger.debug(f"はてなブログへの投稿に成功しました。")
+        logger.debug("-" * 50)
+        logger.debug(f"投稿タイトル：{result["title"]}")
+        logger.debug(f"\n{"-" * 20}投稿本文{"-" * 20}")
+        logger.debug(f"{result["content"]["#text"][:200]}")
+        logger.debug("-" * 50)
 
-    input_fee = Gemini_fee().calculate(MODEL, token_type="input", tokens=i_tokens)
-    thoughts_fee = Gemini_fee().calculate(MODEL, token_type="output", tokens=th_tokens)
-    output_fee = Gemini_fee().calculate(MODEL, token_type="output", tokens=o_tokens)
-    total_output_fee = thoughts_fee + output_fee
-    total_fee = input_fee + thoughts_fee + output_fee
-    ###############
+        i_tokens = stats["input_tokens"]
+        th_tokens = stats["thoughts_tokens"]
+        o_tokens = stats["output_tokens"]
 
-    # 為替レートを取得
-    ticker = "USDJPY=X"
-    dy_rate = yf.Ticker(ticker).history(period="1d").Close[0]
-    total_JPY = total_fee * dy_rate
+        gemini_fee = ai_client.Gemini_fee()
+        input_fee = gemini_fee.calculate(MODEL, token_type="input", tokens=i_tokens)
+        thoughts_fee = gemini_fee.calculate(
+            MODEL, token_type="output", tokens=th_tokens
+        )
+        output_fee = gemini_fee.calculate(MODEL, token_type="output", tokens=o_tokens)
 
-    columns = [
-        "conversation",
-        "AI_name",
-        "output_text",
-        "custom_prompt",
-        "model",
-        "thinking_budget",
-        "input_tokens",
-        "input_fee",
-        "thoughts_tokens",
-        "thoughts_fee",
-        "output_tokens",
-        "output_fee",
-        "total_fee",
-        "total_fee (JPY)",
-    ]
+        total_output_fee = thoughts_fee + output_fee
+        total_fee = input_fee + total_output_fee
+        ###############
 
-    record = [
-        INPUT_PATH.name,
-        ai_name,
-        blog_parts.content,
-        PROMPT,
-        MODEL,
-        LEVEL,
-        i_tokens,
-        input_fee,
-        th_tokens,
-        thoughts_fee,
-        o_tokens,
-        output_fee,
-        total_fee,
-        total_JPY,
-    ]
+        # 為替レートを取得
+        ticker = "USDJPY=X"
+        dy_rate = yf.Ticker(ticker).history(period="1d").Close.iloc[0]
+        total_JPY = total_fee * dy_rate
 
-    output_dir = Path(config["paths"]["output_dir"].strip())
-    output_dir.mkdir(exist_ok=True)
-    summary_path = output_dir / (f"summary_{INPUT_PATH.stem}.txt")
-    csv_path = output_dir / "record_test.csv"
+        columns = [
+            "timestamp" "conversation",
+            "AI_name",
+            "output_text",
+            "custom_prompt",
+            "model",
+            "thinking_budget",
+            "input_tokens",
+            "input_fee",
+            "thoughts_tokens",
+            "thoughts_fee",
+            "output_tokens",
+            "output_fee",
+            "total_fee",
+            "total_fee (JPY)",
+        ]
 
-    append_csv(csv_path, columns, record)
+        record = [
+            datetime.now().isoformat(),
+            INPUT_PATH.name,
+            ai_name,
+            blog_parts.content,
+            PROMPT,
+            MODEL,
+            LEVEL,
+            i_tokens,
+            input_fee,
+            th_tokens,
+            thoughts_fee,
+            o_tokens,
+            output_fee,
+            total_fee,
+            total_JPY,
+        ]
 
-    summary_path.write_text(blog_parts.content, encoding="utf-8")
-    if DEBUG:
-        print(f"created summary: {blog_parts.content[:100]}")
+        output_dir = Path(config["paths"]["output_dir"].strip())
+        output_dir.mkdir(exist_ok=True)
+        summary_path = output_dir / (f"summary_{INPUT_PATH.stem}.txt")
+        csv_path = output_dir / "record_test.csv"
+
+        append_csv(csv_path, columns, record, logger)
+
+        summary_path.write_text(blog_parts.content, encoding="utf-8")
+        logger.info(f"created summary: {blog_parts.content[:100]}")
+
+    except Exception as e:
+        logger.critical(
+            "重大なエラーが発生しました。3秒後に実行を終了します。", exc_info=True
+        )
+        sys.exit(3)
+
+    logger.info("アプリケーションは正常に終了しました。")
