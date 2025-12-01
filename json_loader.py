@@ -3,14 +3,12 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def json_loader(path: Path, ai_name) -> str:
 
-    logging.info(f"jsonファイルを読み込みます: {path.name}")
+    logger.info(f"ファイルを読み込みます: {path.name}")
 
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -27,7 +25,7 @@ def json_loader(path: Path, ai_name) -> str:
     previous_dt = latest_dt
 
     logs = []
-    logging.info(f"処理中： {len(messages)}件")
+    logger.info(f"{len(messages)}件のメッセージを処理中...")
 
     try:
         for message in reversed(messages):  # 逆順
@@ -46,7 +44,7 @@ def json_loader(path: Path, ai_name) -> str:
                 agent = ai_name
             else:
                 agent = message.get("role")
-                logging.debug(
+                logger.debug(
                     f"{'='*25}Detected agent other than You and {ai_name}: {agent} {'='*25}"
                 )
 
@@ -59,16 +57,17 @@ def json_loader(path: Path, ai_name) -> str:
                 previous_dt = msg_dt
 
         if timestamp is None:
-            logging.info("会話履歴に時刻情報がありません。すべての会話を取得します。")
+            print("会話履歴に時刻情報がありません。すべての会話を取得します。")
 
     except KeyError as e:
         raise KeyError(f"エラー： jsonファイルの構成を確認してください - {path}") from e
 
     conversation = "\n".join(logs[::-1])  # 順番を戻す
 
-    logging.info(f"{len(logs)}件の発言を取得しました。")
-    logging.info(f"{'='*25}最初のメッセージ{'='*25}\n{logs[0][:100]}")
-    logging.info(f"{'='*25}最後のメッセージ{'='*25}\n{logs[-1][:100]}")
-    logging.info("☑jsonをテキストに変換しました。")
+    logger.info(f"{len(logs)}件の発言を取得しました。")
+    print(f"{'='*25}最初のメッセージ{'='*25}\n{logs[0][:100]}")
+    print(f"{'='*25}最後のメッセージ{'='*25}\n{logs[-1][:100]}")
+    print("=" * 60)
+    print("☑ jsonをテキストに変換しました。\n")
 
     return conversation

@@ -13,6 +13,7 @@ import yfinance as yf
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
+load_dotenv(override=True)
 
 # .envのDEBUG項目の存在と値でログレベル判定（暫定）
 try:
@@ -104,12 +105,12 @@ def append_csv(path: Path, columns, row: list):
             with path.open("w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.writer(f)
                 writer.writerow(columns)
-        logger.debug(f"新しいCSVファイルを作成しました: {path}")
+        logger.info(f"新しいCSVファイルを作成しました: {path}")
 
         with path.open("a", newline="", encoding="utf-8-sig") as f:
             writer = csv.writer(f)
             writer.writerow(row)
-        logger.debug(f"CSVにデータを追記しました: {path.name}")
+        logger.info(f"CSVにデータを追記しました: {path.name}")
     except Exception:
         logger.exception("CSVファイルへの書き込み中にエラーが発生しました。")
 
@@ -144,8 +145,8 @@ def main(
     debug_mode: bool = True,
 ):
 
-    logger.info("================================================")
-    logger.info(f"アプリケーションが起動しました。DEBUGモード: {debug_mode}")
+    logger.debug("================================================")
+    logger.debug(f"アプリケーションが起動しました。DEBUGモード: {debug_mode}")
 
     AI_LIST = ["Claude", "Gemini", "ChatGPT"]
     ai_name = next((p for p in AI_LIST if input_path.name.startswith(p)), "Unknown AI")
@@ -161,8 +162,6 @@ def main(
         "thoughts_level": LEVEL,
     }
 
-    logger.info(f"Your API Key: ...{API_KEY[-5:]} for {MODEL}")
-
     # Googleで要約取得 & はてなへ投稿
     result, gemini_stats = summarize_and_upload(
         gemini_config, hatena_seacret_keys, debug_mode=DEBUG
@@ -174,12 +173,13 @@ def main(
     categories = result.get("categories", [])
 
     logger.info(f"はてなブログへの投稿に成功しました。")
+    ###### 下書きの場合公開URLへのアクセス不能
     logger.info(f"URL: {url}")
-    logger.info("-" * 50)
-    logger.info(f"投稿タイトル：{title}")
-    logger.info(f"\n{'-' * 20}投稿本文{'-' * 20}")
-    logger.info(f"{content[:100]}")
-    logger.info("-" * 50)
+    print("-" * 50)
+    print(f"投稿タイトル：{title}")
+    print(f"\n{'-' * 20}投稿本文{'-' * 20}")
+    print(f"{content[:100]}")
+    print("-" * 50)
 
     gemini_fee = ai_client.Gemini_fee()
     i_fee = gemini_fee.calculate(MODEL, "input", gemini_stats["input_tokens"])
@@ -250,7 +250,6 @@ def main(
     append_csv(csv_path, columns, record)
 
     summary_path.write_text(content, encoding="utf-8")
-    logger.info(f"created summary: {content[:100]}")
     return 0
 
 
@@ -299,7 +298,7 @@ if __name__ == "__main__":
 
     except Exception as e:
         logger.critical(
-            "重大なエラーが発生しました。app.logで詳細を確認してください。\n実行を終了します。",
+            "エラーが発生しました。app.logで詳細を確認してください。\n実行を終了します。",
             exc_info=True,
         )
         sys.exit(1)

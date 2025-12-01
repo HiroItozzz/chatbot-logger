@@ -17,7 +17,7 @@ def xml_unparser(
     is_draft: bool = False,
 ) -> str:
 
-    logging.debug(f"{'='*25}xml_unparserの処理開始{'='*25}")
+    logger.debug(f"{'='*25}xml_unparserの処理開始{'='*25}")
 
     if categories is None:
         categories = ["Python", "自動投稿"]
@@ -53,7 +53,7 @@ def xml_unparser(
     DRAFT.text = "no"
     PREVIEW.text = "yes" if is_draft else "no"
 
-    logging.debug(f"{'='*25}☑xml_unparserの処理終了{'='*25}")
+    logger.debug(f"{'='*25}☑xml_unparserの処理終了{'='*25}")
     return ET.tostring(ROOT, encoding="unicode")
 
 

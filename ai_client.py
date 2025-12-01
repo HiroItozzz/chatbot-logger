@@ -7,7 +7,7 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 
-logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class BlogParts(BaseModel):
@@ -49,8 +49,8 @@ def get_summary(
     custom_prompt: str = "please summarize the following conversation for my personal blog article. Keep it under 200 words in Japanese: ",
 ) -> tuple[BlogParts, dict]:
 
-    logging.info("Geminiからの応答を待っています。")
-    logging.debug(f"APIキー: ...{gemini_api_key[-5:]}")
+    print("Geminiからの応答を待っています。")
+    logger.debug(f"APIリクエスト中。APIキー: ...{gemini_api_key[-5:]}")
 
     # api_key引数なしの場合、環境変数"GEMNI_API_KEY"の値を勝手に読み込む
     client = genai.Client(api_key=gemini_api_key)
@@ -73,19 +73,32 @@ def get_summary(
             break
         except Exception as e:
             if "503" in str(e) and i < max_retries - 1:
-                logging.info(
+                logger.info(
                     f"Googleの計算資源が逼迫しているようです。{5 * (i+1)}秒後にリトライします。"
                 )
                 time.sleep(5 * (i + 1))  # 5秒、10秒、15秒と待つ
             else:
-                logging.info(
+                logger.info(
                     f"Googleは現在過負荷のようです。少し時間をおいて再実行する必要があります。"
                 )
-                logging.debug(f"詳細：{e}", exc_info=True)
-                logging.info(f"実行を終了します。")
+                logger.debug(f"詳細：{e}", exc_info=True)
+                logger.info(f"実行を中断します。")
                 raise
 
-    contents = BlogParts.model_validate_json(response.text)
+    print("Geminiによる要約を受け取りました。")
+    try:
+        contents = BlogParts.model_validate_json(response.text)
+        logger.debug("構造化出力のバリデーションに成功しました。")
+
+    #### JSONパースによるエラーハンドリング実装予定
+    except Exception as e:
+        logger.info(
+            "構造化出力のバリデーションに失敗しました。再度アプリを実行する必要があります。"
+        )
+        logger.info(f"詳細: {e}", exc_info=True)
+        print("実行を中断します。")
+        raise
+
     stats = {
         "output_letter_count": len(response.text),
         "input_tokens": response.usage_metadata.prompt_token_count,
