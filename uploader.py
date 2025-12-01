@@ -1,3 +1,4 @@
+import logging
 import os
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
@@ -7,11 +8,11 @@ import yaml
 from dotenv import load_dotenv
 from requests_oauthlib import OAuth1Session
 
+logger = logging.getLogger(__name__)
+
 load_dotenv(override=True)
 config_path = Path("config.yaml")
 config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-
-DEBUG = os.getenv("DEBUG", "").lower() in ("true", "1", "t")
 
 
 def xml_unparser(
@@ -20,6 +21,7 @@ def xml_unparser(
     categories: list | None = None,
     author: str | None = None,
     updated: datetime | None = None,
+    is_draft: bool = False,
 ) -> str:
 
     if categories is None:
@@ -54,10 +56,7 @@ def xml_unparser(
     NAME.text = author
     CONTENT.text = content
     DRAFT.text = "no"
-    PREVIEW.text = "no"
-
-    if DEBUG:
-        DRAFT.text = "yes"
+    PREVIEW.text = "yes" if is_draft else "no"
 
     return ET.tostring(ROOT, encoding="unicode")
 
@@ -83,14 +82,12 @@ def hatena_uploader(entry_xml: str = "") -> dict:
         URL, data=entry_xml, headers={"Content-Type": "application/xml; charset=utf-8"}
     )
 
-    if DEBUG:
-        print(f"Status: {response.status_code}")
-        if response.status_code == 201:
-            print("✓ 投稿成功")
-        else:
-            print(f"✗ エラー: {response.text}")
-
-    print(response.text)
+    logger.debug(f"Status: {response.status_code}")
+    if response.status_code == 201:
+        logger.debug("✓ 投稿成功")
+    else:
+        logger.debug(f"✗ エラー: {response.text}")
+    logger.debug(response.text)
 
     root = ET.fromstring(response.text)
     # 名前空間マップ
@@ -139,4 +136,4 @@ if __name__ == "__main__":
     entry_xml = xml_unparser("タイトル", "本文のテスト")
     data = hatena_uploader(entry_xml)  # 辞書型
 
-    print(data)
+    logger.debug(data)

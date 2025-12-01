@@ -55,17 +55,17 @@ class Gemini_fee:
 
 def get_summary(
     conversation: str,
-    api_key: str,
+    gemini_api_key: str,
     model: str = "gemini-2.5-pro",
     thoughts_level: int = -1,
     custom_prompt: str = "please summarize the following conversation for my personal blog article. Keep it under 200 words in Japanese: ",
 ) -> tuple[BlogParts, dict]:
 
     if DEBUG:
-        print(f"Gemini using API_KEY now: '...{api_key[-5:]}'")
+        print(f"Gemini using API_KEY now: '...{gemini_api_key[-5:]}'")
 
     # The client gets the API key from the environment variable `GEMINI_API_KEY` automatically without attribution.
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=gemini_api_key)
 
     # Turn off thinking:
     # thinking_config=types.ThinkingConfig(thinking_budget=0) for gemini-2.5-flash

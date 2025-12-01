@@ -16,9 +16,10 @@ logger = logging.getLogger(__name__)
 
 # .envでログレベル判定
 try:
-    IS_DEBUG_MODE_ENV = os.environ.get("DEBUG", "False").lower() in ("true", "t", "1")
-    initial_level = logging.DEBUG if IS_DEBUG_MODE_ENV else logging.INFO
+    DEBUG_ENV = os.environ.get("DEBUG", "False").lower() in ("true", "t", "1")
+    initial_level = logging.DEBUG if DEBUG_ENV else logging.INFO
 except Exception:
+    DEBUG_ENV = False
     initial_level = logging.INFO
 
 logging.basicConfig(
@@ -113,10 +114,12 @@ def append_csv(path: Path, columns, row: list):
         logger.exception("CSVファイルへの書き込み中にエラーが発生しました。")
 
 
-def summarize_and_upload(gemini_attrs: dict) -> tuple[dict, dict]:
+def summarize_and_upload(
+    gemini_config: dict, hatena_seacret_keys: dict, debug_mode: bool = False
+) -> tuple[dict, dict]:
 
     # GoogleへAPIリクエスト
-    blog_parts, gemini_stats = ai_client.get_summary(**gemini_attrs)
+    blog_parts, gemini_stats = ai_client.get_summary(**gemini_config)
 
     # はてなブログへ投稿
     xml_data = uploader.xml_unparser(
@@ -125,34 +128,32 @@ def summarize_and_upload(gemini_attrs: dict) -> tuple[dict, dict]:
         categories=blog_parts.categories + ["自動投稿", "AtomPub"],  # カテゴリ追加指定
         author=blog_parts.author,  # デフォルトははてなID
         updated=blog_parts.updated,  # datetime型, デフォルトは5分後に公開
+        is_draft=debug_mode,  # デバッグ時は下書き
     )
     result = uploader.hatena_uploader(xml_data)  # 辞書型で返却
 
     return result, gemini_stats
 
 
-def main(input_path: Path):
-
-    # config.yamlで設定（再）初期化
-    try:
-        config, API_KEY, PROMPT, MODEL, LEVEL, DEBUG = initialize_config()
-    except Exception as e:
-        logger.critical(f"CONFIG LOADING ERROR: {e}", exc_info=True)
-        sys.exit(1)
-
-    if DEBUG:
-        logging.getLogger().setLevel(logging.DEBUG)
+def main(
+    input_path: Path,
+    gemini_config: dict,
+    hatena_seacret_keys: dict,
+    debug_mode: bool = True,
+):
 
     logger.info("================================================")
-    logger.info(f"アプリケーションが起動しました。DEBUGモード: {DEBUG}")
+    logger.info(f"アプリケーションが起動しました。DEBUGモード: {debug_mode}")
     ai_list = ["Claude", "Gemini", "ChatGPT"]
 
     ai_name = next((p for p in ai_list if input_path.name.startswith(p)), "Unknown AI")
 
     conversation = json_loader.json_loader(input_path)
+
+    gemini_config["conversation"] = conversation
     gemini_attrs = {
         "conversation": conversation,
-        "api_key": API_KEY,
+        "api_key": "",
         "custom_prompt": PROMPT,
         "model": MODEL,
         "thoughts_level": LEVEL,
@@ -161,7 +162,9 @@ def main(input_path: Path):
     logger.info(f"Your API Key: ...{API_KEY[-5:]} for {MODEL}")
 
     # Googleで要約取得 & はてなへ投稿
-    result, gemini_stats = summarize_and_upload(gemini_attrs)
+    result, gemini_stats = summarize_and_upload(
+        gemini_config, hatena_seacret_keys, debug_mode=DEBUG
+    )
 
     url = result.get("link_alternate", "")
     title = result.get("title", "")
@@ -251,6 +254,27 @@ def main(input_path: Path):
 
 if __name__ == "__main__":
 
+    # config.yamlで設定初期化
+    try:
+        config, API_KEY, PROMPT, MODEL, LEVEL, DEBUG_CONFIG = initialize_config()
+    except Exception as e:
+        logger.critical(f"CONFIG LOADING ERROR: {e}", exc_info=True)
+        sys.exit(1)
+
+    # 環境変数の参照結果がFalseの場合のみconfigで上書き
+    if not DEBUG_ENV:
+        DEBUG = DEBUG_CONFIG
+        if DEBUG:
+            logging.getLogger().setLevel(logging.DEBUG)
+
+    GEMINI_CONFIG = {
+        "custom_prompt": PROMPT,
+        "model": MODEL,
+        "thoughts_level": LEVEL,
+        "gemini_api_key": API_KEY,
+    }
+    HATENA_SECRET_KEYS = {}
+
     try:
         if len(sys.argv) > 1:
             input_path = Path(sys.argv[1])
@@ -259,7 +283,9 @@ if __name__ == "__main__":
             logger.info("エラー: ファイル名が正しくありません。実行を終了します")
             sys.exit(1)
 
-        exit_code = main(input_path)
+        exit_code = main(
+            input_path, GEMINI_CONFIG, HATENA_SECRET_KEYS, debug_mode=DEBUG
+        )
 
         logger.info("アプリケーションは正常に終了しました。")
         sys.exit(exit_code)
