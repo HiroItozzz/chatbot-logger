@@ -2,17 +2,10 @@ import logging
 import os
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
-import yaml
-from dotenv import load_dotenv
 from requests_oauthlib import OAuth1Session
 
 logger = logging.getLogger(__name__)
-
-load_dotenv(override=True)
-config_path = Path("config.yaml")
-config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
 
 def xml_unparser(
@@ -23,6 +16,8 @@ def xml_unparser(
     updated: datetime | None = None,
     is_draft: bool = False,
 ) -> str:
+
+    logging.debug(f"{'='*25}xml_unparserの処理開始{'='*25}")
 
     if categories is None:
         categories = ["Python", "自動投稿"]
@@ -58,6 +53,7 @@ def xml_unparser(
     DRAFT.text = "no"
     PREVIEW.text = "yes" if is_draft else "no"
 
+    logging.debug(f"{'='*25}☑xml_unparserの処理終了{'='*25}")
     return ET.tostring(ROOT, encoding="unicode")
 
 
