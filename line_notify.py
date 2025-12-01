@@ -7,27 +7,23 @@ import requests
 logger = logging.getLogger(__name__)
 
 
-def line_notifier():
+def line_notifier(content: int, line_access_token):
 
     URL = "https://api.line.me/v2/bot/message/broadcast"
 
-    LINE_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "").strip()
-    print(len(LINE_ACCESS_TOKEN), LINE_ACCESS_TOKEN[-5:])
+    logging.debug(len(line_access_token), line_access_token[-5:])
 
-    if LINE_ACCESS_TOKEN:
-        logger.info("アクセストークンを取得")
+    if line_access_token:
+        logger.debug("アクセストークンを取得")
 
-    # 辞書としてヘッダーを設定
     headers = {
-        # 送信するデータの形式を指定（例：JSON）
         "Content-Type": "application/json",
-        # 認証トークンを含める（例：Bearer認証）
-        "Authorization": f"Bearer <{LINE_ACCESS_TOKEN}>",
+        "Authorization": f"Bearer <{line_access_token}>",
     }
 
     message = {
         "type": "text",
-        "text": "✔ 初めてのライン通知です。届いてくれて嬉しいです。",
+        "text": content,
     }
     body = {"messages": [message]}
 
