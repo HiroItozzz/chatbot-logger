@@ -62,6 +62,7 @@ def hatena_uploader(entry_xml: str, hatena_seacret_keys: dict) -> dict:
         "HATENA_BASE_URL", None
     ).strip()  # https://blog.hatena.ne.jp/{はてなID}/{ブログID}/atom/
 
+    # はてなブログへ投稿
     oauth = OAuth1Session(**hatena_seacret_keys)
     response = oauth.post(
         URL, data=entry_xml, headers={"Content-Type": "application/xml; charset=utf-8"}
@@ -75,7 +76,7 @@ def hatena_uploader(entry_xml: str, hatena_seacret_keys: dict) -> dict:
     logger.debug(response.text)
 
     root = ET.fromstring(response.text)
-    # 名前空間マップ
+    # 名前空間
     ns = {"atom": "http://www.w3.org/2005/Atom", "app": "http://www.w3.org/2007/app"}
 
     categories = []

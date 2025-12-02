@@ -1,4 +1,3 @@
-import csv
 import logging
 import os
 import sys
@@ -7,8 +6,8 @@ from pathlib import Path
 
 import ai_client
 import json_loader
-import pandas as pd
 import line_message
+import pandas as pd
 import uploader
 import yaml
 import yfinance as yf
@@ -33,6 +32,27 @@ logging.basicConfig(
         logging.StreamHandler(sys.stdout),
     ],
 )
+
+
+class Gemini_fee:
+    def __init__(self):
+        self.fees = {
+            "gemini-2.5-flash": {"input": 0.03, "output": 2.5},  # $per 1M tokens
+            "gemini-2.5-pro": {
+                "under_0.2M": {"input": 1.25, "output": 10.00},
+                "over_0.2M": {"input": 2.5, "output": 15.0},
+            },
+        }
+
+    def calculate(self, model: str, token_type: str, tokens: int) -> float:
+        if model == "gemini-2.5-pro":
+            base_fees = self.fees["gemini-2.5-pro"]
+            if tokens <= 200000:
+                return tokens * base_fees["under_0.2M"][token_type] / 1000000
+            else:
+                return tokens * base_fees["over_0.2M"][token_type] / 1000000
+        else:
+            return tokens * self.fees[model][token_type] / 1000000
 
 
 def get_nested_config(config_dict, key_path):
@@ -137,7 +157,6 @@ def summarize_and_upload(
         is_draft=debug_mode,  # デバッグ時は下書き
     )
     result = uploader.hatena_uploader(xml_data, hatena_seacret_keys)  # 辞書型で返却
-    #################################################################
 
     return result, gemini_stats
 
@@ -177,16 +196,20 @@ def main(
     print(f"{content[:100]}")
     print("-" * 50)
 
-    gemini_fee = ai_client.Gemini_fee()
-    i_fee = gemini_fee.calculate(MODEL, "input", gemini_stats["input_tokens"])
-    th_fee = gemini_fee.calculate(MODEL, "output", gemini_stats["thoughts_tokens"])
-    o_fee = gemini_fee.calculate(MODEL, "output", gemini_stats["output_tokens"])
+    fee = Gemini_fee()
+    i_fee = fee.calculate(MODEL, "input", gemini_stats["input_tokens"])
+    th_fee = fee.calculate(MODEL, "output", gemini_stats["thoughts_tokens"])
+    o_fee = fee.calculate(MODEL, "output", gemini_stats["output_tokens"])
     total_fee = i_fee + th_fee + o_fee
 
     # 為替レートを取得
     ticker = "USDJPY=X"
-    dy_rate = yf.Ticker(ticker).history(period="1d").Close.iloc[0]
-    total_JPY = total_fee * dy_rate
+    try:
+        dy_rate = yf.Ticker(ticker).history(period="1d").Close.iloc[0]
+        total_JPY = total_fee * dy_rate
+    except Exception as e:
+        logging.info("ヤフーファイナンスから為替レートを取得できませんでした。", exc_)
+        total_JPY = None
 
     df = pd.DataFrame(
         {

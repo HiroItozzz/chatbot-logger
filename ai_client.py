@@ -20,27 +20,6 @@ class BlogParts(BaseModel):
     updated: Optional[datetime]
 
 
-class Gemini_fee:
-    def __init__(self):
-        self.fees = {
-            "gemini-2.5-flash": {"input": 0.03, "output": 2.5},  # $per 1M tokens
-            "gemini-2.5-pro": {
-                "under 0.2M": {"input": 1.25, "output": 10.00},
-                "over 0.2M": {"input": 2.5, "output": 15},
-            },
-        }
-
-    def calculate(self, model: str, token_type: str, tokens: int) -> float:
-        if model == "gemini-2.5-pro":
-            base_fees = self.fees["gemini-2.5-pro"]
-            if tokens <= 200000:
-                return tokens * base_fees["under 0.2M"][token_type] / 1000000
-            else:
-                return tokens * base_fees["over 0.2M"][token_type] / 1000000
-        else:
-            return tokens * self.fees[model][token_type] / 1000000
-
-
 def get_summary(
     conversation: str,
     gemini_api_key: str,
