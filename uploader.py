@@ -50,8 +50,8 @@ def xml_unparser(
     UPDATED.text = updated.isoformat()  # timezoneありの場合それに従う
     NAME.text = author
     CONTENT.text = content
-    DRAFT.text = "no"
-    PREVIEW.text = "yes" if is_draft else "no"
+    DRAFT.text = "yes" if is_draft else "no"
+    PREVIEW.text = "no"
 
     logger.debug(f"{'='*25}☑xml_unparserの処理終了{'='*25}")
     return ET.tostring(ROOT, encoding="unicode")
