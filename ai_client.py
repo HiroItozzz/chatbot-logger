@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class GeminiStructure(BaseModel):
     title: str = Field(description="ブログのタイトル。")
     content: str = Field(
-        description=f"ブログの本文（マークダウン形式）。その最後には、「この記事は Gemini により自動生成されています」と目立つように注記してください。"
+        description=f"ブログの本文（マークダウン形式）。その最後には、「この記事は Gemini-2.5-pro により自動生成されています」と目立つように注記してください。"
     )
     categories: List[str] = Field(description="カテゴリー一覧", max_items=4)
 
@@ -49,7 +49,7 @@ def get_summary(
     print("Geminiからの応答を待っています。")
     logger.debug(f"APIリクエスト中。APIキー: ...{gemini_api_key[-5:]}")
 
-    # api_key引数なしの場合、環境変数"GEMNI_API_KEY"の値を勝手に読み込む
+    # api_key引数なしでも、環境変数"GEMNI_API_KEY"の値を勝手に参照するが、可読性のため代入
     client = genai.Client(api_key=gemini_api_key)
 
     max_retries = 3
