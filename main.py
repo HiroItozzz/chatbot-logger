@@ -68,7 +68,7 @@ def input_paths_to_title(paths: list[Path], ai_names: list[str]) -> str:
         if len(paths) == 1:
             titles.append(path.stem.replace(prefix, ""))
         else:
-            short_name = f"[{idx}] " + path.stem.replace(prefix, "")[:10]
+            short_name = f"[{idx}]" + path.stem.replace(prefix, "")[:10]
             titles.append(short_name)
 
     return " ".join(titles)
