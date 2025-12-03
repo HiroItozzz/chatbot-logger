@@ -2,13 +2,21 @@
 
 **🚧 開発中のプロジェクト 🚧**
 
-対話形AIとのログをAIが分析し、学習記録としてはてなブログへ投稿するツール。
-初回の認証が複雑なため現在は個人用
+対話型AIのログを記録した特定の形式のJSONファイルを解析、要約し、
+学習記録としてはてなブログへ自動投稿するツール。  
 
 ## 基本的な使い方
 - 下記Chrome拡張機能で2クリックでjsonファイルをDL
 - jsonファイルをショートカットへドラッグアンドドロップ
 - その日に行われた一連の会話だけをプログラムが抽出（Claudeログの場合）
+- 会話をGemini 2.5 proが自動で要約、タイトル、カテゴリーを決定
+- その内容をはてなブログへ自動投稿
+- LINEで投稿完了通知
+
+## 基本的な使い方
+- 下記Chrome拡張機能で2クリックでjsonファイルをDL
+- jsonファイルをショートカットへドラッグアンドドロップ
+- その日に行われた一連の会話を抽出（Claudeログの場合）
 - 会話をGemini 2.5 proが自動で要約、タイトル、カテゴリーを決定
 - その内容をはてなブログへ自動投稿
 - LINEで投稿完了通知
@@ -23,16 +31,44 @@
   - `pydantic`
   - 詳しくは `requirements.txt` を参照
 
+
+## 📁 プロジェクト構成
+
+```
+chatbot-logger/
+├── tests/
+├── .env.sample
+├── README_md
+├── ai_client.py         # Gemini API接続
+├── config.yaml
+├── drag_and_drop.bat    # ドラッグ＆ドロップ起動スクリプト
+├── json_loader.py       # JSONファイル処理
+├── line_message.py      # LINE通知モジュール
+├── main.py              # メインスクリプト
+├── pyproject.toml
+├── requirements.txt     # 依存関係
+├── token_request.py     # はてな初回OAuth認証用スクリプト
+├── uploader.py          # ブログ投稿機能
+└── validate.py          # 設定検証モジュール
+```
+
+
 ## 📋 セットアップ
 
-### 0. ルートディレクトリで仮想環境を作成、pipインストール
+### 前提条件
+- Python 3.13以上がインストール済み
+
+### 仮想環境構築 (Windows)
 ```bash
 python -m venv .venv
 .venv\Scripts\activate.bat
 pip install -r requirements.txt
 ```
 
-### 1. Chrome拡張機能のインストール
+## 📖 使用方法
+
+### 1. 対話ログエクスポート
+Claude/ChatGPT/Gemini Exporterを使用してClaudeとの対話をjson形式でエクスポート
 
 - **Claude Exporter**: https://chromewebstore.google.com/detail/claude-exporter-save-clau/elhmfakncmnghlnabnolalcjkdpfjnin
 - **Gemini Exporter**: https://chromewebstore.google.com/detail/gem-chat-exporter-gemini/jfepajhaapfonhhfjmamediilplchakk
@@ -50,30 +86,26 @@ HATENA_CONSUMER_KEY=your_consumer_key
 はてなブログの`consumer key`, `consumer secret`を取得：
 https://developer.hatena.ne.jp/ja/documents/auth/apis/oauth/consumer
 
-`token_request.py`でOAuth認証（初回のみ）
----追記予定
+`token_request.py`でOAuth認証
 
-### 3. drag_and_drop.batのショートカットを使いやすい場所に設置
-
-
-## 📖 使用方法
-
-### 1. 対話ログエクスポート
-Claude/ChatGPT/Gemini Exporterを使用してClaudeとの対話をjson形式でエクスポート
-
-### 2. drag_and_drop.batのショートカットにjsonをドラッグ・アンド・ドロップ
+### 2. drag_and_drop.batにエクスポートしたjsonファイルをドラッグ・アンド・ドロップ
+（標準入力の引数としてmain.pyがファイルパスを受け取る）
 
 ### 3. 結果確認
 - LINEでURL確認！アクセス。
 - `outputs/`フォルダに最新の投稿とCSVファイルを出力/追記
 
+## 技術スタック
+- OAuth 1.0a (requests-oauthlib)
+- Gemini API 構造化出力
+- Pydantic (データバリデーション)
 
 ## 🔧 開発予定・課題
 
-- [ ] **AIによるLINE通知メッセージ** - アップロードすると労いの言葉がかえってくる
+- [ ] **AIによるLINE通知メッセージ** - アップロードすると労いの言葉が返ってくるように
 - [ ] **GUI追加** - 設定・実行の簡易化
 - [ ] **GoogleSheets連携** - csv自動追記でどこでもログ確認
-- [ ] **UXの改善** - フォルダ監視...？完了
+- [ ] **UXの改善** - フォルダ監視...？
 
 
 ### ✅ 実装済み
@@ -86,29 +118,6 @@ Claude/ChatGPT/Gemini Exporterを使用してClaudeとの対話をjson形式で�
 - **はてなブログ投稿**: ブログ記事として投稿
 - **コスト分析**: 入出力トークン使用量と料金記録（JPY換算） ※基本はGemini-2.5-pro 無料枠
 
-## 📁 プロジェクト構成
-
-```
-chatbot-logger/
-├── main.py              # メインスクリプト
-├── validate.py          # 設定検証スクリプト
-├── json_loader.py       # JSONファイル処理
-├── ai_client.py         # Gemini API接続
-├── uploader.py          # ブログ投稿機能
-├── line_message.py      # LINE通知モジュール
-├── token_request.py     # はてな初回OAuth認証用スクリプト
-├── drag_and_drop.bat    # 🎯 ドラッグ＆ドロップ起動スクリプト
-├── config.yaml          # 設定ファイル
-├── .env                 # 環境変数 (APIキーなど)
-├── requirements.txt     # 依存関係
-├── outputs/             # 出力フォルダ
-└── tests/               # テストファイル
-```
-
-## 技術スタック
-- OAuth 1.0a (requests-oauthlib)
-- Gemini API 構造化出力
-- Pydantic (データバリデーション)
 
 ## このプロジェクトで学んだこと（現時点）
 - エラーログ出力（logging）

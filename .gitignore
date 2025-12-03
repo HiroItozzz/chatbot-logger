@@ -2,8 +2,6 @@
 __pycache__/
 *.pyc
 .env
-requirements.ini
-requirements-dev.ini
 sample/
 outputs/
 *.csv
@@ -11,3 +9,5 @@ outputs/
 .pytest_cache
 requirements-dev.*
 requirements.ini
+pytest.ini
+.mypy_chache
