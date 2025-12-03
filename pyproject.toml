@@ -1,0 +1,23 @@
+[project]
+name = "chatbot-logger"
+version = "0.1.0"
+dependencies = [
+    "google-genai",
+    "pyyaml",
+    "yfinance",
+    "pydantic",
+    "requests-oauthlib",
+    "python-dotenv",
+    "pandas"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "isort",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
