@@ -1,0 +1,24 @@
+
+<entry>
+  <id>tag:blog.hatena.ne.jp,2013:blog-{はてなID}-20000000000000-3000000000000000</id>
+  <link rel="edit" href="https://blog.hatena.ne.jp/{はてなID}/{ブログID}/atom/entry/2500000000"/>
+  <link rel="alternate" type="text/html" href="http://{ルートURL}/entry/2008-happy-new-year"/>
+  <author><name>{はてなID}</name></author>
+  <title>記事タイトル</title>
+  <updated>2013-09-02T11:28:23+09:00</updated>
+  <published>2013-09-02T11:28:23+09:00</published>
+  <app:edited>2013-09-02T11:28:23+09:00</app:edited>
+  <summary type="text"> エントリ本文 </summary>
+  <content type="text/x-hatena-syntax">
+    ** エントリ本文
+  </content>
+  <hatena:formatted-content type="text/html" xmlns:hatena="http://www.hatena.ne.jp/info/xmlns#">
+    <div class=&quot;section&quot;>
+    <h4>記事本文</h4>
+  </hatena:formatted-content>
+  <category term="Scala" />
+   <app:control>
+    <app:draft>no</app:draft>
+    <app:preview>no</app:preview>
+  </app:control>
+<entry>

@@ -1,0 +1,26 @@
+{
+  "metadata": {
+    "title": "チャットログ整形コード",
+    "user": {
+      "name": "hiro",
+      "email": "mobiiii24@gmail.com"
+    },
+    "dates": {
+      "created": "11/27/2025 19:11:07",
+      "updated": "11/27/2025 19:11:23",
+      "exported": "11/27/2025 19:12:20"
+    },
+    "link": "https://chatgpt.com/c/692823ba-f9a4-8324-8e87-bb47d4cf0248",
+    "powered_by": "ChatGPT Exporter (https://www.chatgptexporter.com)"
+  },
+  "messages": [
+    {
+      "role": "Prompt",
+      "say": "import os\nfrom pathlib import Path\nfrom dotenv import load_dotenv\nimport json\nfrom datetime import datetime, timedelta\n\n\nload_dotenv()\nDEBUG = os.getenv(\"DEBUG\", \"False\").lower() in (\"true\", \"1\", \"t\")\n\n\nAI_LIST = [\"Claude\", \"ChatGPT\", \"Deepseek\", \"Gemini\", \"Grok\"]\n\n\n自動取得に変更予定\n\n\nINPUT_DIR = \"\"\n\n\nINPUT_PATH = Path(r\"E:\\Dev\\Projects\\chatbot-logger\\sample\\Claude-Git LF!CRLF line ending issues across platforms (1).json\")\n####################\n\n\ndef json_formatter(data: dict) -> list:\n    logs = []\n\n\ndates_meta = data[\"metadata\"][\"dates\"]\nformat_meta = '%m/%d/%Y %H:%M:%S'\n\ncreated_datetime = datetime.strptime((dates_meta.get(\"created\")), format_meta)    # start time of the chat\nupdated_datetime = datetime.strptime((dates_meta.get(\"updated\")), format_meta)    # updated time of the chat\n\nai_name = \"Unknown AI\"\nfor name in AI_LIST:\n    if name.lower() in data[\"metadata\"].get(\"powered_by\").lower():\n        ai_name = name\n        break\n\nlatest_datetime = created_datetime\n\nfor message in data[\"messages\"]:\n    timestamp = message.get(\"time\")\n    text_datetime = datetime.strptime(timestamp, '%Y/%m/%d %H:%M:%S')\n    time_diff = text_datetime - latest_datetime\n\n    # Skip messages from previous days unless more than an hour has passed\n    if not DEBUG:\n        if text_datetime.date() != latest_datetime.date():   \n            if time_diff > timedelta(hours=1):\n                latest_datetime = text_datetime\n                continue\n\n    if message.get(\"role\") == \"Prompt\":\n        agent = \"You\"\n    elif message.get(\"role\") == \"Response\":\n        agent = ai_name        \n    else:\n        agent = message.get(\"role\")\n        if DEBUG:\n            print(f\"Detected agent other than You and {ai_name}: {agent}\")        \n\n    text = message.get(\"say\")\n\n    logs.append(f\"{timestamp} \\nagent: {agent}\\n {text} \\n\\n {'-' * 50}\\n\")\n\n    latest_datetime = text_datetime\n\nreturn logs\n\n\nif name == \"main\":\n    with open (INPUT_PATH, encoding=\"utf-8\") as f:\n        raw_data = json.load(f)\n\n\noutput_texts = \"\\n\".join(json_formatter(raw_data))\n\noutput_dir = Path(os.getenv('OUTPUT_DIR').strip())\noutput_dir.mkdir(exist_ok=True)\noutput_path = output_dir / (INPUT_PATH.stem + '.txt')\n\noutput_path.write_text(output_texts, encoding=\"utf-8\")\n    \nif DEBUG:\n    print(output_texts)\n    exit()\n\n\nこのコードは何でしょうか。"
+    },
+    {
+      "role": "Response",
+      "say": "このコードは、特定形式のチャットログ（JSON）を読み込み、人間とAIの対話を時系列のテキストログに整形して書き出すスクリプトです。ざっくりまとめると次の処理を行っています。\n\n\n\n何をするコードか\n\n\n.env を読み込む\nDEBUG や OUTPUT_DIR などの環境変数を使えるようにしている。\n\nJSON形式のチャットログを読み込む\nmetadata から\n作成日時（created）\n\n更新日時（updated）\n\n使われたAI（powered_by）\nを取得する。\n\nAIの種類を自動判定\npowered_by の文字列から\nClaude / ChatGPT / Deepseek / Gemini / Grok\nのどれかを抽出する。\n\n各メッセージを整形して時系列ログに変換する\nmessage.time（\"YYYY/mm/dd HH:MM:SS\"）を datetime に変換\n\n前回メッセージと日付が変わっていたら1時間以上空いていない場合はスキップする（過去ログを混入させない工夫）\n\nrole が Prompt なら agent=\"You\"\n\nrole が Response なら agent=AIの名前\n\nその他の role は RAWで使用（DEBUG モードなら警告）\n\n一定のログ形式で1行ずつ出力用リストに追加\n2025/01/01 12:00:00\nagent: You\n質問内容...\n--------------------------------------------------\n\nOUTPUT_DIR に整形済みテキスト(.txt) を保存\nファイル名は元JSONと同名\n\n\n\nまとめ\n\n\nこのコードは、\n\n\n✔「AIチャットのJSONログを、読みやすいテキストログに変換する」\n\n\n✔「時系列を整え、AI名を自動判定し、人間/AIを識別して出力する」\n\n\n✔「一定条件で過去ログの混入を避ける」\n\n\nといった目的で作られた、チャットログ整形ツールです。\n\n\n\n必要なら、\n\n\nコードの改善点\n\n構造化リファクタリング\n\nクラス化\n\nロジックの見直し\nなどもできます。"
+    }
+  ]
+}
