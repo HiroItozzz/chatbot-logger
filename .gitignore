@@ -14,3 +14,4 @@ pytest.ini
 dist/
 build/
 .python-version
+temp/
