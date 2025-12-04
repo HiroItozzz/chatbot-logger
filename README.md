@@ -36,7 +36,7 @@ chatlog-2-Hatena/
 │       ├── json_loader.py           # JSONファイル処理・会話抽出
 │       ├── line_message.py          # LINE通知モジュール
 │       ├── main.py                  # メインロジック
-│       ├── uploader.py              # はてなブログ投稿機能
+│       ├── hatenablog_poster.py     # はてなブログ投稿機能
 │       └── validate.py              # 設定検証・初期化
 ├── tests/         
 ├── .env.sample                      # 環境変数テンプレート
