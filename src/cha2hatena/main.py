@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 import pandas as pd
 import yfinance as yf
 
-from . import ai_client, json_loader, line_message, uploader
+from . import ai_client, line_message, uploader
+from . import json_loader as jl
 from .validate import initialize_config
 
 logger = logging.getLogger(__name__)
@@ -53,23 +54,6 @@ def summarize_and_upload(
     return result, gemini_stats
 
 
-def input_paths_to_title(paths: list[Path], ai_names: list[str]) -> str:
-    """インプットパスのリストをcsv出力用タイトルに処理"""
-    titles = []
-    for idx, (path, ai_name) in enumerate(zip(paths, ai_names), 1):
-        prefix = ai_name + "-"
-        if not path.stem.startswith(prefix):
-            titles.append(f"[{idx}] {path.stem}")
-            continue
-        if len(paths) == 1:
-            titles.append(path.stem.replace(prefix, ""))
-        else:
-            short_name = f"[{idx}]" + path.stem.replace(prefix, "")[:10]
-            titles.append(short_name)
-
-    return " ".join(titles)
-
-
 def append_csv(path: Path, df: pd.DataFrame):
     """pathがなければ作成し、CSVに1行追記"""
     is_new_file = not path.exists()
@@ -91,153 +75,132 @@ def append_csv(path: Path, df: pd.DataFrame):
 
 def main():
 
-    # config.yamlで設定初期化
     try:
-        config, SECRET_KEYS = initialize_config()
-    except Exception as e:
-        logger.critical(f"CONFIG LOADING ERROR: {e}", exc_info=True)
-        sys.exit(1)
+        # config.yamlで設定初期化
+        try:
+            config, SECRET_KEYS = initialize_config()
+        except Exception as e:
+            logger.critical(f"CONFIG LOADING ERROR: {e}", exc_info=True)
+            sys.exit(1)
 
-    DEBUG_CONFIG = config["other"]["debug"].lower() in ("true", "1", "t")
-    DEBUG = DEBUG_ENV if DEBUG_ENV else DEBUG_CONFIG
+        logger.debug("================================================")
+        logger.debug(f"アプリケーションが起動しました。")
 
-    logger.debug("================================================")
-    logger.debug(f"アプリケーションが起動しました。DEBUGモード: {DEBUG}")
+        DEBUG_CONFIG = config["other"]["debug"].lower() in ("true", "1", "t")
+        DEBUG = DEBUG_ENV if DEBUG_ENV else DEBUG_CONFIG
 
-    if DEBUG and not DEBUG_ENV:
-        logging.getLogger().setLevel(logging.DEBUG)
+        if DEBUG and not DEBUG_ENV:
+            logging.getLogger().setLevel(logging.DEBUG)
 
-    PRESET_CATEGORIES = config["blog"]["preset_category"]
-    GEMINI_CONFIG = {
-        "custom_prompt": config["ai"]["prompt"],
-        "model": config["ai"]["model"],
-        "thoughts_level": config["ai"]["thoughts_level"],
-        "gemini_api_key": SECRET_KEYS.pop("GEMINI_API_KEY"),
-    }
-    HATENA_SECRET_KEYS = SECRET_KEYS
+        PRESET_CATEGORIES = config["blog"]["preset_category"]
+        GEMINI_CONFIG = {
+            "custom_prompt": config["ai"]["prompt"],
+            "model": config["ai"]["model"],
+            "thoughts_level": config["ai"]["thoughts_level"],
+            "gemini_api_key": SECRET_KEYS.pop("GEMINI_API_KEY"),
+        }
+        HATENA_SECRET_KEYS = SECRET_KEYS
 
-    AI_LIST = ["Claude", "Gemini", "ChatGPT"]
+        if len(sys.argv) > 1:
+            INPUT_PATHS_RAW = sys.argv[1:]
+            logger.info(f"処理を開始します: {', '.join(INPUT_PATHS_RAW)}")
+        else:
+            logger.info("エラー: コマンドライン引数を入力する必要があります。実行を終了します")
+            sys.exit(1)
 
-    if len(sys.argv) > 1:
-        INPUT_PATH_RAW = sys.argv[1:]
-        logger.info(f"処理を開始します: {', '.join(INPUT_PATH_RAW)}")
-    else:
-        logger.info(
-            "エラー: コマンドライン引数を入力する必要があります。実行を終了します"
+        input_paths = list(map(Path, INPUT_PATHS_RAW))
+
+        conversation = jl.json_loader(input_paths)
+
+        GEMINI_CONFIG["conversation"] = conversation
+
+        # Googleで要約取得 & はてなへ投稿
+        result, gemini_stats = summarize_and_upload(
+            PRESET_CATEGORIES, GEMINI_CONFIG, HATENA_SECRET_KEYS, debug_mode=DEBUG
         )
-        sys.exit(1)
 
-    input_paths = []
-    ai_names = []
-    for raw_path in INPUT_PATH_RAW:
-        input_path = Path(raw_path)
-        input_paths.append(input_path)
-        ai_name = next(
-            (p for p in AI_LIST if input_path.name.startswith(p + "-")), "Unknown AI"
+        url = result.get("link_alternate", "")
+        title = result.get("title", "")
+        content = result.get("content", "")
+        categories = result.get("categories", [])
+
+        logger.info(f"はてなブログへの投稿に成功しました。")
+        ###### 下書きの場合公開URLへのアクセス不能
+        logger.info(f"URL: {url}")
+        print("-" * 50)
+        print(f"投稿タイトル：{title}")
+        print(f"\n{'-' * 20}投稿本文{'-' * 20}")
+        print(f"{content[:100]}")
+        print("-" * 50)
+
+        MODEL = GEMINI_CONFIG["model"]
+        fee = ai_client.GeminiFee()
+        i_fee = fee.calculate(MODEL, "input", gemini_stats["input_tokens"])
+        th_fee = fee.calculate(MODEL, "output", gemini_stats["thoughts_tokens"])
+        o_fee = fee.calculate(MODEL, "output", gemini_stats["output_tokens"])
+        total_fee = i_fee + th_fee + o_fee
+
+        # 為替レートを取得
+        ticker = "USDJPY=X"
+        try:
+            dy_rate = yf.Ticker(ticker).history(period="1d").Close.iloc[0]
+            total_JPY = total_fee * dy_rate
+        except Exception as e:
+            logging.info("ヤフーファイナンスから為替レートを取得できませんでした。", exc_info=True)
+            total_JPY = None
+
+        ai_names = jl.ai_names_from_paths(input_paths)
+        conversation_titles = " ".join(jl.get_conversation_titles(input_paths, ai_names))
+        df = pd.DataFrame(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "conversation_title": conversation_titles,
+                "AI_name": " ".join(ai_names),
+                "entry_URL": url,
+                "is_draft": result.get("is_draft"),
+                "entry_title": title,
+                "entry_content": content[:30],
+                "categories": ",".join(categories),
+                "custom_prompt": GEMINI_CONFIG["custom_prompt"][:20],
+                "model": GEMINI_CONFIG["model"],
+                "thinking_budget": GEMINI_CONFIG["thoughts_level"],
+                "input_letter_count": len(conversation),
+                "output_letter_count": gemini_stats["output_letter_count"],
+                "input_tokens": gemini_stats["input_tokens"],
+                "input_fee": i_fee,
+                "thoughts_tokens": gemini_stats["thoughts_tokens"],
+                "thoughts_fee": th_fee,
+                "output_tokens": gemini_stats["output_tokens"],
+                "output_fee": o_fee,
+                "total_fee (USD)": total_fee,
+                "total_fee (JPY)": total_JPY,
+                "api_key": "..." + GEMINI_CONFIG["gemini_api_key"][-5:],
+            },
+            index=["vals"],
         )
-        ai_names.append(ai_name)
 
-    ### 複数のconversationをAIが読み込みやすい形に修正予定
-    conversation = json_loader.json_loader(input_paths, ai_names)
+        output_dir = Path(config["paths"]["output_dir"].strip())
+        output_dir.mkdir(exist_ok=True)
+        summary_path = output_dir / (f"{title}.txt")
+        csv_path = output_dir / "record.csv"
 
-    GEMINI_CONFIG["conversation"] = conversation
+        # csv出力
+        append_csv(csv_path, df)
 
-    # Googleで要約取得 & はてなへ投稿
-    result, gemini_stats = summarize_and_upload(
-        PRESET_CATEGORIES, GEMINI_CONFIG, HATENA_SECRET_KEYS, debug_mode=DEBUG
-    )
+        summary_path.write_text(content, encoding="utf-8")
 
-    url = result.get("link_alternate", "")
-    title = result.get("title", "")
-    content = result.get("content", "")
-    categories = result.get("categories", [])
+        # LINE通知
+        LINE_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "").strip()
+        line_text = f"投稿完了です。今日も長い時間お疲れさまでした！\nURL:{url}\nタイトル：{title}"
+        try:
+            line_message.line_messenger(line_text, LINE_ACCESS_TOKEN)
+        except Exception as e:
+            print("エラー：LINE通知は行われませんでした。")
 
-    logger.info(f"はてなブログへの投稿に成功しました。")
-    ###### 下書きの場合公開URLへのアクセス不能
-    logger.info(f"URL: {url}")
-    print("-" * 50)
-    print(f"投稿タイトル：{title}")
-    print(f"\n{'-' * 20}投稿本文{'-' * 20}")
-    print(f"{content[:100]}")
-    print("-" * 50)
+        logging.info("アプリケーションは正常に終了しました。")
 
-    MODEL = GEMINI_CONFIG["model"]
-    fee = ai_client.GeminiFee()
-    i_fee = fee.calculate(MODEL, "input", gemini_stats["input_tokens"])
-    th_fee = fee.calculate(MODEL, "output", gemini_stats["thoughts_tokens"])
-    o_fee = fee.calculate(MODEL, "output", gemini_stats["output_tokens"])
-    total_fee = i_fee + th_fee + o_fee
-
-    # 為替レートを取得
-    ticker = "USDJPY=X"
-    try:
-        dy_rate = yf.Ticker(ticker).history(period="1d").Close.iloc[0]
-        total_JPY = total_fee * dy_rate
-    except Exception as e:
-        logging.info(
-            "ヤフーファイナンスから為替レートを取得できませんでした。", exc_info=True
-        )
-        total_JPY = None
-
-    df = pd.DataFrame(
-        {
-            "timestamp": datetime.now().isoformat(),
-            "conversation_title": input_paths_to_title(input_paths, ai_names),
-            "AI_name": " ".join(ai_names),
-            "entry_URL": url,
-            "is_draft": result.get("is_draft"),
-            "entry_title": title,
-            "entry_content": content[:30],
-            "categories": ",".join(categories),
-            "custom_prompt": GEMINI_CONFIG["custom_prompt"][:20],
-            "model": GEMINI_CONFIG["model"],
-            "thinking_budget": GEMINI_CONFIG["thoughts_level"],
-            "input_letter_count": len(conversation),
-            "output_letter_count": gemini_stats["output_letter_count"],
-            "input_tokens": gemini_stats["input_tokens"],
-            "input_fee": i_fee,
-            "thoughts_tokens": gemini_stats["thoughts_tokens"],
-            "thoughts_fee": th_fee,
-            "output_tokens": gemini_stats["output_tokens"],
-            "output_fee": o_fee,
-            "total_fee (USD)": total_fee,
-            "total_fee (JPY)": total_JPY,
-            "api_key": "..." + GEMINI_CONFIG["gemini_api_key"][-5:],
-        },
-        index=["vals"],
-    )
-
-    output_dir = Path(config["paths"]["output_dir"].strip())
-    output_dir.mkdir(exist_ok=True)
-    summary_path = output_dir / (f"{title}.txt")
-    csv_path = output_dir / "record.csv"
-
-    append_csv(csv_path, df)
-
-    summary_path.write_text(content, encoding="utf-8")
-
-    LINE_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "").strip()
-    line_text = (
-        f"投稿完了です。今日も長い時間お疲れさまでした！\nURL:{url}\nタイトル：{title}"
-    )
-    try:
-        line_message.line_messenger(line_text, LINE_ACCESS_TOKEN)
-    except Exception as e:
-        print("エラー：LINE通知は行われませんでした。")
-
-    return 0
-
-
-if __name__ == "__main__":
-    try:
-        exit_code = main()  # メイン処理
-
-        logger.info("アプリケーションは正常に終了しました。")
-        sys.exit(exit_code)
+        return 0
 
     except Exception as e:
-        logger.critical(
-            "エラーが発生しました。app.logで詳細を確認してください。\n実行を終了します。",
-            exc_info=True,
-        )
+        logging.info("エラーが発生しました。\n実行を終了します。", exc_info=True)
         sys.exit(1)
