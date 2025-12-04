@@ -1,4 +1,4 @@
-# chatbot-logger
+# chatlog-2-hatena
 
 
 AIとの会話が保存された特定の形式のJSONファイルを解析・要約。
