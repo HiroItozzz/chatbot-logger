@@ -15,13 +15,9 @@ if "%~1"=="" (
     exit /b 1
 )
 
-echo 処理中: %~nx1
-.venv\Scripts\python.exe "main.py" "%~1"
-
-if %errorlevel% neq 0 (
-    pause
-    exit /b %errorlevel%
-)
+echo 処理中: %*
+.venv\Scripts\python.exe -m ch2hatena %*
+pause
 exit /b 0
 
 :check_environment
@@ -32,7 +28,6 @@ if not exist ".venv\Scripts\python.exe" (
     echo python -m venv .venv
     echo .venv\Scripts\activate
     echo pip install -r requirements.txt
-    timeout /t 3
     exit /b 1
 )
 
@@ -44,8 +39,7 @@ if %errorlevel% neq 0 (
     echo 📦 パッケージをインストールします...
     .venv\Scripts\python.exe -m pip install -r requirements.txt
     if %errorlevel% neq 0 (
-        echo ❌ インストールに失敗しました。3秒後に終了します。
-        timeout /t 3
+        echo ❌ インストールに失敗しました
         exit /b 1
     )
     echo ✓ インストール完了
