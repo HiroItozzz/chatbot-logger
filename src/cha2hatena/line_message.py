@@ -5,9 +5,9 @@ import requests
 logger = logging.getLogger(__name__)
 
 
-def line_messenger(content: str, line_access_token:str):
+def line_messenger(content: str, line_access_token: str):
 
-    URL = "https://api.line.me/v2/bot/message/broadcast"
+    URL = r"https://api.line.me/v2/bot/message/broadcast"
 
     logger.debug(f"LINEアクセストークン: ... {line_access_token[-5:]}")
 
@@ -34,7 +34,7 @@ def line_messenger(content: str, line_access_token:str):
         logger.info(f"ステータスコード：{res.status_code}")
         res_dict = res.json()
         try:
-            logger.info(f"詳細: {res_dict["message"]}")
-            logger.info(f"{res_dict["details"][0]["message"]}")
+            logger.info(f"詳細: {res_dict['message']}")
+            logger.info(f"{res_dict['details'][0]['message']}")
         except Exception:
             logger.info("レスポンスを解析できませんでした。", exc_info=True)
