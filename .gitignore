@@ -1,8 +1,7 @@
-.venv/
+.venv*
 __pycache__/
 *.pyc
 .env
-sample/
 outputs/
 *.csv
 *.log
@@ -11,3 +10,6 @@ requirements-dev.*
 requirements.ini
 pytest.ini
 .mypy_cache
+*.egg-info/
+dist/
+build/

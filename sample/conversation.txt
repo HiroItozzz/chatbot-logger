@@ -1,0 +1,199 @@
+==================== 1個目の会話 ====================
+
+
+ 
+agent: You
+[message]
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+import json
+from datetime import datetime, timedelta
+
+load_dotenv()
+DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")
+
+AI_LIST = ["Claude", "ChatGPT", "Deepseek", "Gemini", "Grok"]
+
+自動取得に変更予定
+
+INPUT_DIR = ""
+
+INPUT_PATH = Path(r"E:\Dev\Projects\chatbot-logger\sample\Claude-Git LF!CRLF line ending issues across platforms (1).json")
+####################
+
+def json_formatter(data: dict) -> list:
+    logs = []
+
+dates_meta = data["metadata"]["dates"]
+format_meta = '%m/%d/%Y %H:%M:%S'
+created_datetime = datetime.strptime((dates_meta.get("created")), format_meta)    # start time of the chat
+updated_datetime = datetime.strptime((dates_meta.get("updated")), format_meta)    # updated time of the chat
+ai_name = "Unknown AI"
+for name in AI_LIST:
+    if name.lower() in data["metadata"].get("powered_by").lower():
+        ai_name = name
+        break
+latest_datetime = created_datetime
+for message in data["messages"]:
+    timestamp = message.get("time")
+    text_datetime = datetime.strptime(timestamp, '%Y/%m/%d %H:%M:%S')
+    time_diff = text_datetime - latest_datetime
+    # Skip messages from previous days unless more than an hour has passed
+    if not DEBUG:
+        if text_datetime.date() != latest_datetime.date():   
+            if time_diff > timedelta(hours=1):
+                latest_datetime = text_datetime
+                continue
+    if message.get("role") == "Prompt":
+        agent = "You"
+    elif message.get("role") == "Response":
+        agent = ai_name        
+    else:
+        agent = message.get("role")
+        if DEBUG:
+            print(f"Detected agent other than You and {ai_name}: {agent}")        
+    text = message.get("say")
+    logs.append(f"{timestamp} \nagent: {agent}\n {text} \n\n {'-' * 50}\n")
+    latest_datetime = text_datetime
+return logs
+
+if name == "main":
+    with open (INPUT_PATH, encoding="utf-8") as f:
+        raw_data = json.load(f)
+
+output_texts = "\n".join(json_formatter(raw_data))
+output_dir = Path(os.getenv('OUTPUT_DIR').strip())
+output_dir.mkdir(exist_ok=True)
+output_path = output_dir / (INPUT_PATH.stem + '.txt')
+output_path.write_text(output_texts, encoding="utf-8")
+    
+if DEBUG:
+    print(output_texts)
+    exit()
+
+このコードは何でしょうか。 
+
+ --------------------------------------------------
+
+ 
+agent: ChatGPT
+[message]
+このコードは、特定形式のチャットログ（JSON）を読み込み、人間とAIの対話を時系列のテキストログに整形して書き出すスクリプトです。ざっくりまとめると次の処理を行っています。
+
+何をするコードか
+
+.env を読み込む
+DEBUG や OUTPUT_DIR などの環境変数を使えるようにしている。
+JSON形式のチャットログを読み込む
+metadata から
+作成日時（created）
+更新日時（updated）
+使われたAI（powered_by）
+を取得する。
+AIの種類を自動判定
+powered_by の文字列から
+Claude / ChatGPT / Deepseek / Gemini / Grok
+のどれかを抽出する。
+各メッセージを整形して時系列ログに変換する
+message.time（"YYYY/mm/dd HH:MM:SS"）を datetime に変換
+前回メッセージと日付が変わっていたら1時間以上空いていない場合はスキップする（過去ログを混入させない工夫）
+role が Prompt なら agent="You"
+role が Response なら agent=AIの名前
+その他の role は RAWで使用（DEBUG モードなら警告）
+一定のログ形式で1行ずつ出力用リストに追加
+2025/01/01 12:00:00
+agent: You
+質問内容...
+--------------------------------------------------
+OUTPUT_DIR に整形済みテキスト(.txt) を保存
+ファイル名は元JSONと同名
+
+まとめ
+
+このコードは、
+
+✔「AIチャットのJSONログを、読みやすいテキストログに変換する」
+
+✔「時系列を整え、AI名を自動判定し、人間/AIを識別して出力する」
+
+✔「一定条件で過去ログの混入を避ける」
+
+といった目的で作られた、チャットログ整形ツールです。
+
+必要なら、
+
+コードの改善点
+構造化リファクタリング
+クラス化
+ロジックの見直し
+などもできます。 
+
+ --------------------------------------------------
+
+
+
+==================== 2個目の会話 ====================
+
+
+2025/11/20 10:25:53 
+agent: You
+[message]
+ClaudeとのChat履歴をエクスポートする方法を教えてください 
+
+ --------------------------------------------------
+
+2025/11/20 10:26:10 
+agent: Claude
+[message]
+Claude.ai でのチャット履歴をエクスポートする方法をお調べします。
+
+Web Search: Claude.ai chat history export method
+GitHub - agarwalvishal/claude-chat-exporter: Claude Chat Exporter is a JavaScript tool that allows you to export your conversations with Claude AI into a well-formatted Markdown file. github.com
+
+GitHub - ryanschiang/claude-export: Browser script to share and export Anthropic Claude chat logs to Markdown, JSON, or as Image (PNG) github.com
+
+How can I export my Claude data? | Claude Help Center anthropic.com
+
+How to Download a Claude Chat Session promptlayer.com
+
+Follow the steps to use Claude Exporter Chrome Extension | Claude Exporter claudexporter.com
+
+Claude Export Tool - Chrome Web Store google.com
+
+Claude Exporter: Save Claude as PDF, MD and more - Chrome Web Store google.com
+
+Claude Exporter - Efficient Conversation Extraction Tool | Creati.ai creati.ai
+
+Claude Exporter - Save Claude as PDF, MD and more claudexporter.com
+
+How can I export my Claude data? | Anthropic Privacy Center anthropic.com
+Claude.aiのチャット履歴をエクスポートする方法は、主に2つあります。
+
+公式のエクスポート機能
+
+個人ユーザーとTeamプランのPrimary Ownerは、WebアプリまたはClaude Desktopの「設定」>「プライバシー」からユーザー情報とチャット履歴をエクスポートできます（iOS・Androidアプリからは不可）。
+
+手順:
+
+アカウント画面左下のイニシャルをクリック
+「Settings（設定）」を選択
+「Privacy（プライバシー）」セクションに移動
+「Export data（データをエクスポート）」ボタンをクリック
+
+エクスポートが処理されると、ダウンロードリンクがメールで送信されます。ダウンロードリンクは配信から24時間後に期限切れになります。
+
+ブラウザ拡張機能を使用
+
+個別の会話を手軽にエクスポートしたい場合は、Chrome拡張機能が便利です。
+
+主な拡張機能:
+
+Claude Exporter: PDF、Markdown、テキスト、CSV、JSON、画像など複数の形式に対応
+Claude Export Tool: TXT、MD、CSV、JSON、HTMLファイルとして保存可能
+
+これらの拡張機能を使えば、会話ページから直接、必要な部分だけを選択してエクスポートできます。
+
+どちらの方法もニーズに応じて選択できますが、全履歴が必要な場合は公式機能、個別の会話を手軽に保存したい場合は拡張機能がおすすめです。 
+
+ --------------------------------------------------
