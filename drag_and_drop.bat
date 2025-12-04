@@ -16,9 +16,16 @@ if "%~1"=="" (
 )
 
 echo 処理中: %*
-.venv\Scripts\python.exe -m ch2hatena %*
-pause
-exit /b 0
+.venv\Scripts\python.exe -m cha2hatena %*
+if %errorlevel% equ 0 (
+    echo ✓ 処理が完了しました
+    timeout /t 2
+    exit /b 0
+) else (
+    echo ❌ エラーが発生しました
+    pause
+    exit /b 1
+)
 
 :check_environment
 if not exist ".venv\Scripts\python.exe" (
@@ -27,17 +34,17 @@ if not exist ".venv\Scripts\python.exe" (
     echo 💡 解決策:
     echo python -m venv .venv
     echo .venv\Scripts\activate
-    echo pip install -r requirements.txt
+    echo pip install -e .
     exit /b 1
 )
 
 echo ✓ 仮想環境を確認
-.venv\Scripts\python.exe -c "import requests, yaml, dotenv, yfinance" 2>nul
+.venv\Scripts\python.exe -m pip install e . 2>nul
 if %errorlevel% neq 0 (
     echo ❌ 必要なパッケージが不足しています
     echo.
     echo 📦 パッケージをインストールします...
-    .venv\Scripts\python.exe -m pip install -r requirements.txt
+    .venv\Scripts\python.exe -m pip install -e .
     if %errorlevel% neq 0 (
         echo ❌ インストールに失敗しました
         exit /b 1

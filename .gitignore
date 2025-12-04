@@ -1,4 +1,4 @@
-.venv/
+.venv*
 __pycache__/
 *.pyc
 .env
@@ -10,3 +10,6 @@ requirements-dev.*
 requirements.ini
 pytest.ini
 .mypy_cache
+*.egg-info/
+dist/
+build/

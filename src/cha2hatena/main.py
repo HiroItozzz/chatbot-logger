@@ -89,7 +89,7 @@ def append_csv(path: Path, df: pd.DataFrame):
         logger.exception("CSVファイルへの書き込み中にエラーが発生しました。")
 
 
-def main(input_paths_raw: list):
+def main():
 
     # config.yamlで設定初期化
     try:
@@ -118,9 +118,18 @@ def main(input_paths_raw: list):
 
     AI_LIST = ["Claude", "Gemini", "ChatGPT"]
 
+    if len(sys.argv) > 1:
+        INPUT_PATH_RAW = sys.argv[1:]
+        logger.info(f"処理を開始します: {', '.join(INPUT_PATH_RAW)}")
+    else:
+        logger.info(
+            "エラー: コマンドライン引数を入力する必要があります。実行を終了します"
+        )
+        sys.exit(1)
+
     input_paths = []
     ai_names = []
-    for raw_path in input_paths_raw:
+    for raw_path in INPUT_PATH_RAW:
         input_path = Path(raw_path)
         input_paths.append(input_path)
         ai_name = next(
@@ -220,16 +229,8 @@ def main(input_paths_raw: list):
 
 
 if __name__ == "__main__":
-
-    if len(sys.argv) > 1:
-        input_paths_raw = sys.argv[1:]
-        logger.info(f"処理を開始します: {', '.join(input_paths_raw)}")
-    else:
-        logger.info("エラー: 入力が正しくありません。実行を終了します")
-        sys.exit(1)
-
     try:
-        exit_code = main(input_paths_raw)  # メイン処理
+        exit_code = main()  # メイン処理
 
         logger.info("アプリケーションは正常に終了しました。")
         sys.exit(exit_code)

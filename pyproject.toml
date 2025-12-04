@@ -1,16 +1,22 @@
-[build-system]
-requires = ["setuptools >= 77.0.3"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "ch2hatena"
+name = "cha2hatena"
 version = "0.1.0"
-description = "AI-chatbot conversation logger and blog auto-poster"
+description = "AI-chatbot conversation summarizer and blog auto-poster"
 authors = [
   {name = "Hiroaki Ito", email = "mobiiii24@gmail.com"}
 ]
 readme = "README.md"
+license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
+keywords = ["chatbot", "blog", "hatena", "automation", "gemini"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+]
 dependencies = [
     "requests",
     "requests-oauthlib",
@@ -22,6 +28,14 @@ dependencies = [
     "pandas"
 ]
 
+[project.urls]
+Repository = "https://github.com/HiroItozzz/chatlog-2-hatena.git"
+
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+
 [project.optional-dependencies]
 dev = [
     "pytest",
@@ -29,9 +43,8 @@ dev = [
     "mypy"
 ]
 
-
 [project.scripts]
-ch2hatena = "ch2hatena.main:main"
+cha2hatena = "cha2hatena.main:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
