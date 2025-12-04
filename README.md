@@ -16,7 +16,7 @@ AIとの会話が保存された特定の形式のJSONファイルを解析・�
 
 ## 実行環境
 
-- **Python 3.13 以上**
+- **Python 3.10 以上**
 - 主要依存ライブラリ:
   - `google-genai`
   - `pydantic`
@@ -26,12 +26,6 @@ AIとの会話が保存された特定の形式のJSONファイルを解析・�
 ## 📁 プロジェクト構成
 
 ```
-<<<<<<< HEAD
-chatbot-logger/
-├── tests/
-├── .env.sample
-├── __init__.py
-=======
 chatlog-2-Hatena/
 ├── sample/                          # サンプルファイル・テストデータ
 ├── src/
@@ -48,7 +42,6 @@ chatlog-2-Hatena/
 ├── .env.sample                      # 環境変数テンプレート
 ├── .gitignore
 ├── LICENSE
->>>>>>> abef3d34ecbf1078d72066c3f0defabb26dd6325
 ├── README.md
 ├── config.yaml                      # アプリケーション設定
 ├── drag_and_drop.bat                # ドラッグ＆ドロップ起動スクリプト（Windows）
