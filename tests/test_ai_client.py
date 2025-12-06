@@ -1,8 +1,9 @@
 import os
 from pathlib import Path
 
-from cha2hatena.ai_client import GeminiStructure, get_summary
 from dotenv import load_dotenv
+
+from cha2hatena.ai_client import get_summary
 
 load_dotenv()
 
@@ -24,12 +25,12 @@ def test_ai_client():
     }
 
     result, stats = get_summary(**gemini_config)  # -> GeminiStructure, dict[int]
-    print("=====タイトル:", result.title)
-    print(f"=====内容：{len(result.content)}文字/n", result.content[:50])
-    print("=====カテゴリー", " ".join(result.categories))
-    print(
-        f"stats：{stats['input_tokens']}, {stats['thoughts_tokens']}, {stats['output_tokens']}"
-    )
-    assert len(result.content) > 0
+    print("=====タイトル:", result["title"])
+    print(f"=====内容：{len(result['content'])}文字/n", result["content"][:50])
+    print("=====カテゴリー", " ".join(result["categories"]))
+    print(f"stats：{stats['input_tokens']}, {stats['thoughts_tokens']}, {stats['output_tokens']}")
+
+    assert API_KEY
+    assert len(result["content"]) > 0
     assert stats["input_tokens"] > 0
-    assert len(result.categories) > 1
+    assert len(result["categories"]) > 1

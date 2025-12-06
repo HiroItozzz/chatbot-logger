@@ -24,13 +24,17 @@ AIとの会話が保存された特定の形式のJSONファイルを解析・�
 
 
 ## 📁 プロジェクト構成
-
-- `src/cha2hatena/` - メインパッケージ
-- `token_request.py` - はてな初回OAuth認証用（最初に1度だけ実行）
-- `drag_and_drop.bat` - Windows用起動スクリプト
-- `.env.sample` - 環境変数テンプレート
-- `config.yaml` - アプリケーション設定
-
+```
+chatlog-2-Hatena/
+├── src/cha2hatena/          # メインパッケージ
+├── sample/                  # サンプルファイル
+├── tests/                   # テストコード
+├── .env.sample              # 環境変数テンプレート
+├── config.yaml              # アプリケーション設定
+├── drag_and_drop.bat        # Windows用起動スクリプト
+├── requirements.txt         # 依存関係
+└── token_request.py         # はてな初回OAuth認証用（最初に1度だけ実行）
+```
 ## 📋 セットアップ
 
 ```bash
@@ -62,7 +66,7 @@ HATENA_CONSUMER_SECRET=your_consumer_secret
 ```
 
 ### 3. はてなブログOAuth認証
-はてなブログの`access token`、`access token secret`を取得：
+はてなブログの`access token`、`access token secret`を取得、`.env`で設定：
 
 1. https://developer.hatena.ne.jp/ja/documents/auth/apis/oauth/consumer を参照
 2. `token_request.py`を実行してOAuth認証フローを完了
@@ -88,24 +92,22 @@ blog:
 
 ### 5. 実行方法
 
-**ドラッグアンドドロップ（推奨・Windows）:**
-- `drag_and_drop.bat`にエクスポートしたJSONファイルをドラッグ&ドロップ
-- 仮想環境の存在確認とパッケージ依存関係の自動チェック機能付き
+**ドラッグアンドドロップ（Windows）:**
+- `drag_and_drop.bat`にエクスポートしたJSONファイル（複数可）をドラッグ&ドロップ
 
-**コマンドラインでの実行:**
+**コマンドライン:**
+```bash
+cha2hatena file1.json file2.json file3.json
+```
+
 ```bash
 python -m cha2hatena path/to/conversation.json
 ```
 
-複数ファイルも可能：
-```bash
-python -m cha2hatena file1.json file2.json file3.json
-```
-
 ### 6. 結果確認
-- LINEで投稿完了通知が送信される
-- `outputs/record.csv` に実行履歴・コスト（トークン数と料金）が記録される
-- `outputs/{title}.txt` に投稿本文がテキストとして保存される
+- LINEで投稿完了通知を送信
+- `outputs/record.csv` に実行履歴・コスト（トークン数と料金）を記録
+- `outputs/{title}.txt` に投稿本文をテキストとして保存
 
 ## 技術スタック
 - OAuth 1.0a (requests-oauthlib)
@@ -116,12 +118,8 @@ python -m cha2hatena file1.json file2.json file3.json
 
 ## 🔧 開発予定・課題
 
-- [ ] はてな投稿・LINE通知のそれぞれのオンオフを可能に - 現在は設定検証の範囲が広すぎるため使い勝手が悪い
 - [ ] LINE通知メッセージ内容強化 - アップロードするとAI生成による好きなタイプの労いの言葉が返ってくるように
-- [ ] GUI追加 - 設定・実行の簡易化
 - [ ] GoogleSheets連携 - csv自動追記でどこでもログ確認
-- [ ] UXの改善 - フォルダ監視...？
-
 
 ### ✅ 実装済み
 
@@ -147,7 +145,7 @@ python -m cha2hatena file1.json file2.json file3.json
 - XML形式の取り扱い（ElementTree、名前空間、XPath）
 - ログレベルの使い分け
 - gitのブランチとプルリクエストの使い方
-- Pythonパッケージング（`__main__.py`の意味、pyproject.toml）
+- パッケージングの方法（`__main__.py`の意味、pyproject.toml）
 
 ## 感じたこと
 

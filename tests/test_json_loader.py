@@ -10,7 +10,7 @@ ai_names = ["ChatGPT", "Claude"]
 
 
 def test_json_loader():
-    result = jl.json_loader(sample_paths, ai_names)
+    result = jl.json_loader(sample_paths)
     with open("outputs/test_json_loader.txt", "w", encoding="utf-8") as f:
         f.write(result)
 
@@ -19,5 +19,5 @@ def test_json_loader():
 
 
 if __name__ == "__main__":
-    a = jl.json_loader(sample_paths, ai_names)
+    a = jl.json_loader(sample_paths)
     print(a[:200])
