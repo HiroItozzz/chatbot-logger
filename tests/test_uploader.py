@@ -1,9 +1,10 @@
+import json
 import os
 from pathlib import Path
 
-import pytest
-from cha2hatena.hatenablog_poster import GeminiStructure, hatena_uploader, xml_unparser
 from dotenv import load_dotenv
+
+from cha2hatena.hatenablog_poster import hatena_oauth, parse_response, xml_unparser
 
 
 def test_uploader():
@@ -22,22 +23,22 @@ def test_uploader():
     for key in KEYS.values():
         print(key[-5:])
 
-    if not all(KEYS.values()):
-        pytest.skip("はてなAPIキーが設定されていません")
-
     # JSON読み込み
     path1 = Path("sample/gemini_structure.json")
     json_text = path1.read_text(encoding="utf-8")
-    gemini_structure = GeminiStructure.model_validate_json(json_text)
+    data = json.loads(json_text)
 
     # XML生成
-    xml = xml_unparser(gemini_structure, is_draft=True)
-    # 投稿
-    result = hatena_uploader(xml, KEYS)
+    xml = xml_unparser(**data, is_draft=True)
+    res = hatena_oauth(xml, hatena_secret_keys=KEYS)
 
+    result = parse_response(res)
+
+    assert all(KEYS.values())
     assert result["title"] is not None
-    assert result["is_draft"] == True  # 下書きかどうか確認
+    assert result["is_draft"]  # 下書きかどうか確認
 
 
 if __name__ == "__main__":
+    test_uploader()
     test_uploader()
