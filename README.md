@@ -104,7 +104,6 @@ cha2hatena file1.json file2.json file3.json
 python -m cha2hatena path/to/conversation.json
 ```
 
-
 ### 6. 結果確認
 - LINEで投稿完了通知を送信
 - `outputs/record.csv` に実行履歴・コスト（トークン数と料金）を記録
@@ -119,12 +118,8 @@ python -m cha2hatena path/to/conversation.json
 
 ## 🔧 開発予定・課題
 
-- [ ] はてな投稿・LINE通知のそれぞれのオンオフを可能に - 現在は設定検証の範囲が広すぎるため使い勝手が悪い
 - [ ] LINE通知メッセージ内容強化 - アップロードするとAI生成による好きなタイプの労いの言葉が返ってくるように
-- [ ] GUI追加 - 設定・実行の簡易化
 - [ ] GoogleSheets連携 - csv自動追記でどこでもログ確認
-- [ ] UXの改善 - フォルダ監視...？
-
 
 ### ✅ 実装済み
 

@@ -34,6 +34,10 @@ def test_uploader():
 
     result = parse_response(res)
 
+    print(result["link_edit"])
+    print(result["link_edit_user"])
+    print(result["link_alternate"])
+
     assert all(KEYS.values())
     assert result["title"] is not None
     assert result["is_draft"]  # 下書きかどうか確認
