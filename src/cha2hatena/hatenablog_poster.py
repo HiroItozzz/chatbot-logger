@@ -1,10 +1,24 @@
 import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
+from requests import Response
 from requests_oauthlib import OAuth1Session
 
 logger = logging.getLogger(__name__)
+
+
+def safe_find(root: ET, key: str, ns: dict | None = None, default: str = "") -> str:
+    """ヘルパー関数: Noneの場合返却を空文字に"""
+    elem = root.find(key, ns)
+    return elem.text if elem is not None else default
+
+
+def safe_find_attr(root: ET, key: str, attr: str, ns: dict | None = None, default: str = "") -> str:
+    """属性取得用ヘルパー関数"""
+    elem = root.find(key, ns)
+    return elem.get(attr) if elem is not None else default
 
 
 def xml_unparser(
@@ -67,39 +81,37 @@ def hatena_oauth(xml_str: str, hatena_secret_keys: dict) -> dict:
     if response.status_code == 201:
         logger.info("✓ はてなブログへ投稿成功")
     else:
-        logger.info(f"✗ エラー発生。はてなブログへ投稿できませんでした。")
-
-        ### エラー処理考え中
-        raise ConnectionError
-
+        logger.info("✗ エラー発生。はてなブログへ投稿できませんでした。")
     return response
 
 
-def parse_response(response: str) -> dict:
+def parse_response(response: Response) -> dict[str, Any]:
     """投稿結果を取得"""
 
     # 名前空間
     NS = {"atom": "http://www.w3.org/2005/Atom", "app": "http://www.w3.org/2007/app"}
-
     root = ET.fromstring(response.text)
     categories = []
     for category_elem in root.findall("atom:category", NS):
-        term = category_elem.get("term")
+        term = category_elem.get("term", "")
         if term:
             categories.append(term)
+    try:
+        response_dict = {
+            # Atom名前空間の要素
+            "title": safe_find(root, "{http://www.w3.org/2005/Atom}title"),  # XML名前空間の実体
+            "author": safe_find(root, "atom:author/atom:name", NS),
+            "content": safe_find(root, "atom:content", NS),
+            "time": datetime.fromisoformat(safe_find(root, "atom:updated", NS)),
+            "link_edit": safe_find_attr(root, "atom:link[@rel='edit']", "href", NS),
+            "link_alternate": safe_find_attr(root, "atom:link[@rel='alternate']", "href", NS),
+            "categories": categories,
+            # app名前空間の要素
+            "is_draft": safe_find(root, "app:control/app:draft", NS) == "yes",
+        }
+    except TypeError as e:
+        pass
 
-    response_dict = {
-        # Atom名前空間の要素
-        "title": root.find("{http://www.w3.org/2005/Atom}title").text,  # XML名前空間の実体
-        "author": root.find("atom:author/atom:name", NS).text,
-        "content": root.find("atom:content", NS).text,
-        "time": datetime.fromisoformat(root.find("atom:updated", NS).text),
-        "link_edit": root.find("atom:link[@rel='edit']", NS).get("href"),
-        "link_alternate": root.find("atom:link[@rel='alternate']", NS).get("href"),
-        "categories": categories,
-        # app名前空間の要素
-        "is_draft": root.find("app:control/app:draft", NS).text == "yes",
-    }
     return response_dict
 
 
@@ -113,6 +125,7 @@ def blog_post(
     updated: datetime | None = None,
     is_draft: bool = False,
 ) -> dict:
+
     xml_entry = xml_unparser(title, content, categories, preset_categories, author, updated, is_draft)
     res = hatena_oauth(xml_entry, hatena_secret_keys)
 
