@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 from datetime import datetime
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 import pandas as pd
@@ -15,23 +16,51 @@ from .validate import initialize_config
 logger = logging.getLogger(__name__)
 load_dotenv(override=True)
 
-# .envのDEBUG項目の存在と値でログレベル仮判定
+# DEBUGモード・ログレベル仮判定
 try:
-    DEBUG_ENV = os.environ.get("DEBUG", "False").lower() in ("true", "t", "1")
-    initial_level = logging.DEBUG if DEBUG_ENV else logging.INFO
+    DEBUG_ENV = os.getenv("DEBUG", "False").lower() in ("true", "t", "1")
+    initial_level = logging.DEBUG if DEBUG_ENV else logging.WARNING
 except Exception:
     DEBUG_ENV = False
-    initial_level = logging.INFO
+    initial_level = logging.WARNING
 
-logging.basicConfig(
-    level=initial_level,
-    format="%(asctime)s - %(levelname)s - [%(name)s] - %(message)s",
-    handlers=[
-        logging.FileHandler("app.log", encoding="utf-8"),
-        logging.StreamHandler(sys.stdout),
-    ],
-)
+# ハンドラー設定
+file_handler = RotatingFileHandler("app.log", maxBytes=0.5*1024*1024, backupCount=1 ,encoding="utf-8")
+file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
+file_handler.setLevel(logging.DEBUG)
 
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setFormatter(logging.Formatter("%(message)s"))
+console_handler.setLevel(initial_level)
+
+logging.basicConfig(level=logging.DEBUG, handlers=[file_handler, console_handler])
+
+# 設定読み込み
+try:
+    config, SECRET_KEYS = initialize_config()
+except Exception as e:
+    logger.critical(f"APIキーを読み込めませんでした: {e}")
+    sys.exit(1)
+
+# DEBUGモード・ログレベル決定
+DEBUG_CONFIG = config["other"]["debug"].lower() in ("true", "1", "t")
+DEBUG = DEBUG_ENV if DEBUG_ENV else DEBUG_CONFIG
+if DEBUG and not DEBUG_ENV:
+    logging.root.setLevel(logging.DEBUG)
+
+# グローバル定数
+PRESET_CATEGORIES = config["blog"]["preset_category"]
+GEMINI_CONFIG = {
+    "custom_prompt": config["ai"]["prompt"],
+    "model": config["ai"]["model"],
+    "thoughts_level": config["ai"]["thoughts_level"],
+    "gemini_api_key": SECRET_KEYS.pop("GEMINI_API_KEY"),
+}
+LINE_ACCESS_TOKEN = SECRET_KEYS.pop("LINE_CHANNEL_ACCESS_TOKEN")
+HATENA_SECRET_KEYS = SECRET_KEYS
+
+
+######################################################
 
 def summarize_and_upload(
     preset_categories: list,
@@ -67,46 +96,23 @@ def append_csv(path: Path, df: pd.DataFrame):
             header=is_new_file,  # ファイルがなければヘッダー書き込み、あればFalse
         )
         if is_new_file:
-            logger.info(f"新しいCSVファイルを作成しました: {path}")
+            logger.warning(f"新しいCSVファイルを作成しました: {path}")
         else:
-            logger.info(f"CSVにデータを追記しました: {path.name}")
+            logger.warning(f"CSVにデータを追記しました: {path.name}")
     except Exception:
         logger.exception("CSVファイルへの書き込み中にエラーが発生しました。")
 
 
 def main():
     try:
-        # config.yamlで設定初期化
-        try:
-            config, SECRET_KEYS = initialize_config()
-        except Exception as e:
-            logger.critical(f"CONFIG LOADING ERROR: {e}", exc_info=True)
-            sys.exit(1)
-
         logger.debug("================================================")
-        logger.debug("アプリケーションが起動しました。")
-
-        DEBUG_CONFIG = config["other"]["debug"].lower() in ("true", "1", "t")
-        DEBUG = DEBUG_ENV if DEBUG_ENV else DEBUG_CONFIG
-
-        if DEBUG and not DEBUG_ENV:
-            logging.getLogger().setLevel(logging.DEBUG)
-
-        PRESET_CATEGORIES = config["blog"]["preset_category"]
-        GEMINI_CONFIG = {
-            "custom_prompt": config["ai"]["prompt"],
-            "model": config["ai"]["model"],
-            "thoughts_level": config["ai"]["thoughts_level"],
-            "gemini_api_key": SECRET_KEYS.pop("GEMINI_API_KEY"),
-        }
-        LINE_ACCESS_TOKEN = SECRET_KEYS.pop("LINE_CHANNEL_ACCESS_TOKEN")
-        HATENA_SECRET_KEYS = SECRET_KEYS
+        logger.debug(f"アプリケーションが起動しました。デバッグモード：{DEBUG}")
 
         if len(sys.argv) > 1:
             INPUT_PATHS_RAW = sys.argv[1:]
-            logger.info(f"処理を開始します: {', '.join(INPUT_PATHS_RAW)}")
+            logger.warning(f"処理を開始します: {', '.join(INPUT_PATHS_RAW)}")
         else:
-            logger.info("エラー: コマンドライン引数を入力する必要があります。実行を終了します")
+            logger.error("エラー: 引数を入力する必要があります。実行を終了します")
             sys.exit(1)
 
         input_paths = list(map(Path, INPUT_PATHS_RAW))
@@ -126,9 +132,9 @@ def main():
         content = result.get("content", "")
         categories = result.get("categories", [])
 
-        logger.info("はてなブログへの投稿に成功しました。")
+        logger.warning("はてなブログへの投稿に成功しました。")
         ###### 下書きの場合公開URLへのアクセス不能
-        logger.info(f"URL: {url}")
+        logger.warning(f"URL: {url_edit}")
         print("-" * 50)
         print(f"投稿タイトル：{title}")
         print(f"\n{'-' * 20}投稿本文{'-' * 20}")
@@ -148,8 +154,8 @@ def main():
             dy_rate = yf.Ticker(ticker).history(period="1d").Close.iloc[0]
             total_JPY = total_fee * dy_rate
         except Exception as e:
-            logging.info("ヤフーファイナンスから為替レートを取得できませんでした。", exc_info=True)
-            logging.info(f"詳細: {e}")
+            logger.error("ヤフーファイナンスから為替レートを取得できませんでした。詳細はapp.logを確認してください")
+            logger.info(f"詳細: {e}",exc_info=True)
             total_JPY = None
 
         ai_names = jl.ai_names_from_paths(input_paths)
@@ -204,13 +210,14 @@ def main():
         try:
             line_message.line_messenger(line_text, LINE_ACCESS_TOKEN)
         except Exception as e:
-            print("エラー：LINE通知は行われませんでした。")
-            logging.info(f"詳細: {e}", exc_info=True)
+            logger.error("エラー：LINE通知は行われませんでした。")
+            logger.info(f"詳細: {e}")
 
-        logging.info("アプリケーションは正常に終了しました。")
+        logger.info("処理が正常に終了しました。")
 
         return 0
 
-    except Exception as e:
-        logging.info("エラーが発生しました。\n実行を終了します。", exc_info=True)
+    except Exception:
+        logger.error("アプリケーションの実行を中止します。")
+        logger.info("詳細: ", exc_info=True)
         sys.exit(1)
