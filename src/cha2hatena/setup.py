@@ -132,4 +132,4 @@ def initialization(logger:logging.Logger) ->tuple:
         stream_handler.setLevel(logging.DEBUG)
         stream_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
 
-    return DEBUG, secret_keys, config,  stream_handler, file_handler
+    return DEBUG, secret_keys, config

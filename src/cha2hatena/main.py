@@ -5,18 +5,16 @@ from pathlib import Path
 
 import pandas as pd
 import yfinance as yf
-from dotenv import load_dotenv
 
 from . import ai_client, hatenablog_poster, line_message
 from . import json_loader as jl
 from .setup import initialization
 
-load_dotenv(override=True)
 logger = logging.getLogger(__name__)
 parent_logger = logging.getLogger("chat2hatena")
 
 try:
-    DEBUG, SECRET_KEYS, config, stream_handler, file_handler = initialization(parent_logger)
+    DEBUG, SECRET_KEYS, config = initialization(parent_logger)
 except Exception as e:
     logger.critical(f"初期設定が正常に行われませんでした: {e}", exc_info=True)
     sys.exit(1)
