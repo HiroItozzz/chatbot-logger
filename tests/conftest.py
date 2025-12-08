@@ -5,7 +5,7 @@ import pytest
 def mock_get_summary(monkeypatch):
     def _gemini(
         conversation: str,
-        gemini_api_key: str,
+        api_key: str,
         model: str,
         thoughts_level: int,
         custom_prompt: str,
@@ -28,5 +28,5 @@ def mock_get_summary(monkeypatch):
 
         return data, stats
     
-    monkeypatch.setattr("cha2hatena.ai_client.get_summary", _gemini)
+    monkeypatch.setattr("cha2hatena.ai_client.gemini_client", _gemini)
     return _gemini

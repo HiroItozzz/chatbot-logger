@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 
-class GeminiStructure(BaseModel):
+class BlogPost(BaseModel):
     title: str = Field(description="ブログのタイトル。")
     content: str = Field(
         description="ブログの本文（マークダウン形式）。"
@@ -19,7 +19,7 @@ class GeminiStructure(BaseModel):
     categories: List[str] = Field(description="カテゴリー一覧", max_length=4)
 
 
-class GeminiFee:
+class LlmFee:
     def __init__(self):
         self.fees = {
             "gemini-2.5-flash": {"input": 0.03, "output": 2.5},  # $per 1M tokens
@@ -42,7 +42,7 @@ class GeminiFee:
             return
 
 
-def get_summary(
+def gemini_client(
     conversation: str,
     gemini_api_key: str,
     model: str = "gemini-2.5-pro",
@@ -68,7 +68,7 @@ def get_summary(
                 config=types.GenerateContentConfig(
                     thinking_config=types.ThinkingConfig(thinking_budget=thoughts_level),
                     response_mime_type="application/json",  # 構造化出力
-                    response_json_schema=GeminiStructure.model_json_schema(),
+                    response_json_schema=BlogPost.model_json_schema(),
                 ),
             )
             break
@@ -89,6 +89,7 @@ def get_summary(
             logger.error("要約取得中に予期せぬエラー発生。詳細はapp.logを確認してください。")
             logger.error("実行を中止します。")
             logger.info(f"詳細: {e}")
+            raise
 
     print("Geminiによる要約を受け取りました。")
 
@@ -108,3 +109,6 @@ def get_summary(
     }
 
     return data, stats
+
+def deepseek_client():
+    pass
