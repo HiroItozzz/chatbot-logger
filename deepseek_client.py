@@ -2,7 +2,7 @@ import json
 import logging
 import time
 from pathlib import Path
-import OpenAI
+from openai import OpenAI
 from .cha2hatena.gemini_client import BlogPost
 
 logger = logging.getLogger(__name__)
