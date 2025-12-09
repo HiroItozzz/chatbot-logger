@@ -38,7 +38,7 @@ def deepseek_errors(i, e, max_retries):
         raise
 
 
-def deepseek_client(
+def get_summary(
     conversation: str,
     api_key: str,
     model: str = "deepseek-reasoner",

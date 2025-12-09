@@ -38,11 +38,11 @@ HATENA_SECRET_KEYS = SECRET_KEYS
 def hinge(params:dict) -> tuple[dict, dict]:
 
     if params["model"].startswith("gemini"):
-       return ai_client.gemini_client(**params)
+       return ai_client.get_summary(**params)
     
     elif params["model"].startswith("deepseek"):
        import deepseek_client
-       return ai_client.deepseek_client(**params)
+       return deepseek_client.get_summary(**params)
     else:
         logger.error(f"モデル名が正しくありません。model: {params['model']}")
         logger.error("正しく入力し直してください。実行を中止します。")

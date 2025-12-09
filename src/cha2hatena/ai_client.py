@@ -42,7 +42,7 @@ class LlmFee:
             return
 
 
-def gemini_client(
+def get_summary(
     conversation: str,
     api_key: str,
     model: str = "gemini-2.5-pro",

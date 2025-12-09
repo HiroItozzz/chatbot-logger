@@ -28,5 +28,5 @@ def mock_get_summary(monkeypatch):
 
         return data, stats
     
-    monkeypatch.setattr("cha2hatena.ai_client.gemini_client", _gemini)
+    monkeypatch.setattr("cha2hatena.ai_client.get_summary", _gemini)
     return _gemini
