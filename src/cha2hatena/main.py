@@ -6,8 +6,10 @@ from pathlib import Path
 import pandas as pd
 import yfinance as yf
 
-from . import ai_client, hatenablog_poster, line_message
+from . import hatenablog_poster, line_message
 from . import json_loader as jl
+from .llm import deepseek_client, gemini_client
+from .llm.llm_fee import LlmFee
 from .setup import initialization
 
 logger = logging.getLogger(__name__)
@@ -34,19 +36,15 @@ HATENA_SECRET_KEYS = SECRET_KEYS
 
 ######################################################
 
-
-def hinge(params:dict) -> tuple[dict, dict]:
-
+def create_ai_client(params):
     if params["model"].startswith("gemini"):
-       return ai_client.get_summary(**params)
-    
+        client = gemini_client.GeminiClient(**params)
     elif params["model"].startswith("deepseek"):
-       import deepseek_client
-       return deepseek_client.get_summary(**params)
+        client = deepseek_client.DeepseekClient(**params)
     else:
-        logger.error(f"モデル名が正しくありません。model: {params['model']}")
-        logger.error("正しく入力し直してください。実行を中止します。")
-        raise ValueError
+        logger.error("モデル名が正しくありません。実行を中止します。")
+        logger.error(f"モデル名: {params['model']}")
+    return client
     
 
 def summarize_and_upload(
@@ -56,7 +54,7 @@ def summarize_and_upload(
     debug_mode: bool = False,
 ) -> tuple[dict, dict]:
     # GoogleへAPIリクエスト
-    llm_outputs, llm_stats = hinge(llm_config)
+    llm_outputs, llm_stats = create_ai_client(llm_config).get_summary()
 
     # はてなブログへ投稿 投稿結果を辞書型で返却
     response_dict = hatenablog_poster.blog_post(
@@ -143,11 +141,10 @@ def main():
             logger.info(f"詳細: {e}")
 
 
-        MODEL = LLM_CONFIG["model"]
-        fee = ai_client.LlmFee()
-        i_fee = fee.calculate(MODEL, "input", llm_stats["input_tokens"])
-        th_fee = fee.calculate(MODEL, "output", llm_stats["thoughts_tokens"])
-        o_fee = fee.calculate(MODEL, "output", llm_stats["output_tokens"])
+        fee = LlmFee(LLM_CONFIG["model"])
+        i_fee = fee.calculate(llm_stats["input_tokens"],"input")
+        th_fee = fee.calculate(llm_stats["thoughts_tokens"], "thoughts")
+        o_fee = fee.calculate(llm_stats["output_tokens"], "output")
         total_fee = i_fee + th_fee + o_fee
 
         # 為替レートを取得

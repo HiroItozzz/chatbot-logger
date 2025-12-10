@@ -57,9 +57,9 @@ class DeepseekClient(ConversationalAi):
         thoughts_tokens = getattr(response.usage.completion_tokens_details,"reasoning_tokens", 0)
         stats = {
             "output_letter_count": len(generated_text),
-            "input_tokens": response.usage.prompt_tokens,
-            "thoughts_tokens": thoughts_tokens,
-            "output_tokens": response.usage.completion_tokens - thoughts_tokens,
+            "input_tokens": int(response.usage.prompt_tokens),
+            "thoughts_tokens": int(thoughts_tokens),
+            "output_tokens": int(response.usage.completion_tokens) - int(thoughts_tokens),
         }
 
         return data, stats
