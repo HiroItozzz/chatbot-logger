@@ -6,12 +6,15 @@ from pathlib import Path
 import pandas as pd
 import yfinance as yf
 
-from . import ai_client, hatenablog_poster, line_message
+from . import hatenablog_poster, line_message
 from . import json_loader as jl
+from .llm import deepseek_client, gemini_client
+from .llm.conversational_ai import ConversationalAi
+from .llm.llm_fee import LlmFee
 from .setup import initialization
 
 logger = logging.getLogger(__name__)
-parent_logger = logging.getLogger("chat2hatena")
+parent_logger = logging.getLogger("cha2hatena")
 
 try:
     DEBUG, SECRET_KEYS, config = initialization(parent_logger)
@@ -22,11 +25,11 @@ except Exception as e:
 
 # グローバル定数
 PRESET_CATEGORIES = config["blog"]["preset_category"]
-GEMINI_CONFIG = {
-    "custom_prompt": config["ai"]["prompt"],
+LLM_CONFIG = {
+    "prompt": config["ai"]["prompt"],
     "model": config["ai"]["model"],
-    "thoughts_level": config["ai"]["thoughts_level"],
-    "gemini_api_key": SECRET_KEYS.pop("GEMINI_API_KEY"),
+    "temperature": config["ai"]["temperature"],
+    "api_key": SECRET_KEYS.pop("API_KEY"),
 }
 LINE_ACCESS_TOKEN = SECRET_KEYS.pop("LINE_CHANNEL_ACCESS_TOKEN")
 HATENA_SECRET_KEYS = SECRET_KEYS
@@ -34,18 +37,29 @@ HATENA_SECRET_KEYS = SECRET_KEYS
 
 ######################################################
 
+def create_ai_client(params):
+    if params["model"].startswith("gemini"):
+        client = gemini_client.GeminiClient(**params)
+    elif params["model"].startswith("deepseek"):
+        client = deepseek_client.DeepseekClient(**params)
+    else:
+        logger.error("モデル名が正しくありません。実行を中止します。")
+        logger.error(f"モデル名: {params['model']}")
+    return client
+    
+
 def summarize_and_upload(
     preset_categories: list,
-    gemini_config: dict,
+    llm_client: ConversationalAi,
     hatena_secret_keys: dict,
     debug_mode: bool = False,
 ) -> tuple[dict, dict]:
     # GoogleへAPIリクエスト
-    gemini_outputs, gemini_stats = ai_client.get_summary(**gemini_config)
+    llm_outputs, llm_stats = llm_client.get_summary()
 
     # はてなブログへ投稿 投稿結果を辞書型で返却
     response_dict = hatenablog_poster.blog_post(
-        **gemini_outputs,
+        **llm_outputs,
         hatena_secret_keys=hatena_secret_keys,
         preset_categories=preset_categories,
         author=None,  # str | None   Noneの場合自分のはてなID
@@ -53,7 +67,7 @@ def summarize_and_upload(
         is_draft=debug_mode,  # デバッグ時は下書き
     )
 
-    return response_dict, gemini_stats
+    return response_dict, llm_stats
 
 
 def append_csv(path: Path, df: pd.DataFrame):
@@ -73,6 +87,7 @@ def append_csv(path: Path, df: pd.DataFrame):
             logger.warning(f"CSVにデータを追記しました: {path.name}")
     except Exception:
         logger.exception("CSVファイルへの書き込み中にエラーが発生しました。")
+        
 
 
 def main():
@@ -91,11 +106,14 @@ def main():
 
         conversation = jl.json_loader(input_paths)
 
-        GEMINI_CONFIG["conversation"] = conversation
+        LLM_CONFIG["conversation"] = conversation
+
+        # AIオブジェクト作成
+        ai_instance = create_ai_client(LLM_CONFIG)
 
         # Googleで要約取得 & はてなへ投稿
-        result, gemini_stats = summarize_and_upload(
-            PRESET_CATEGORIES, GEMINI_CONFIG, HATENA_SECRET_KEYS, debug_mode=DEBUG
+        result, llm_stats = summarize_and_upload(
+            PRESET_CATEGORIES, ai_instance, HATENA_SECRET_KEYS, debug_mode=DEBUG
         )
 
         url = result.get("link_alternate", "")
@@ -127,11 +145,10 @@ def main():
             logger.info(f"詳細: {e}")
 
 
-        MODEL = GEMINI_CONFIG["model"]
-        fee = ai_client.GeminiFee()
-        i_fee = fee.calculate(MODEL, "input", gemini_stats["input_tokens"])
-        th_fee = fee.calculate(MODEL, "output", gemini_stats["thoughts_tokens"])
-        o_fee = fee.calculate(MODEL, "output", gemini_stats["output_tokens"])
+        fee = LlmFee(LLM_CONFIG["model"])
+        i_fee = fee.calculate(llm_stats["input_tokens"],"input")
+        th_fee = fee.calculate(llm_stats["thoughts_tokens"], "thoughts")
+        o_fee = fee.calculate(llm_stats["output_tokens"], "output")
         total_fee = i_fee + th_fee + o_fee
 
         # 為替レートを取得
@@ -156,20 +173,20 @@ def main():
                 "entry_title": title,
                 "entry_content": content[:30],
                 "categories": ",".join(categories),
-                "custom_prompt": GEMINI_CONFIG["custom_prompt"][:20],
-                "model": GEMINI_CONFIG["model"],
-                "thinking_budget": GEMINI_CONFIG["thoughts_level"],
+                "prompt": LLM_CONFIG["prompt"][:20],
+                "model": LLM_CONFIG["model"],
+                "temperature": LLM_CONFIG["temperature"],
                 "input_letter_count": len(conversation),
-                "output_letter_count": gemini_stats["output_letter_count"],
-                "input_tokens": gemini_stats["input_tokens"],
+                "output_letter_count": llm_stats["output_letter_count"],
+                "input_tokens": llm_stats["input_tokens"],
                 "input_fee": i_fee,
-                "thoughts_tokens": gemini_stats["thoughts_tokens"],
+                "thoughts_tokens": llm_stats["thoughts_tokens"],
                 "thoughts_fee": th_fee,
-                "output_tokens": gemini_stats["output_tokens"],
+                "output_tokens": llm_stats["output_tokens"],
                 "output_fee": o_fee,
                 "total_fee (USD)": total_fee,
                 "total_fee (JPY)": total_JPY,
-                "api_key": "..." + GEMINI_CONFIG["gemini_api_key"][-5:],
+                "api_key": "..." + LLM_CONFIG["api_key"][-5:],
             },
             index=["vals"],
         )
