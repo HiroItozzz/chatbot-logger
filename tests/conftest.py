@@ -1,12 +1,13 @@
 import logging
 from datetime import datetime
+
 import pytest
 
 from cha2hatena import hatenablog_poster
-from cha2hatena.main import create_ai_client
-from cha2hatena.llm.gemini_client import GeminiClient
 from cha2hatena.llm.deepseek_client import DeepseekClient
-from cha2hatena.llm.llm_fee import LlmFee
+from cha2hatena.llm.gemini_client import GeminiClient
+from cha2hatena.llm.llm_stats import LlmFee, TokenStats
+from cha2hatena.main import create_ai_client
 
 logger = logging.getLogger()
 
@@ -29,12 +30,14 @@ def mock_get_summary(monkeypatch):
             "categories": ["カテゴリ1", "カテゴリー2", "カテゴリー3"],
         }
 
-        stats = {
-            "output_letter_count": 500,
-            "input_tokens": 1000,
-            "thoughts_tokens": 1500,
-            "output_tokens": 2000,
-        }
+        stats = TokenStats(
+            input_tokens=1000,
+            thoughts_tokens=1500,
+            output_tokens=2000,
+            input_letter_count=len(conversation),
+            output_letter_count=500,
+            model=model
+        )
 
         return data, stats
 
@@ -91,9 +94,14 @@ def __2_mock_summarize_and_upload(monkeypatch):
         debug_mode: bool = False,
     ) -> tuple[dict, dict]:
         # GoogleへAPIリクエスト
-        llm_outputs, llm_stats = (
-            {"title": "mock", "content": "mock", "categories": ["mock"]},
-            {"input_tokens": 10000, "output_tokens": 954, "thoughts_tokens": 1010, "output_letter_count": 1544},
+        llm_outputs = {"title": "mock", "content": "mock", "categories": ["mock"]}
+        llm_stats = TokenStats(
+            input_tokens=10000,
+            thoughts_tokens=1010,
+            output_tokens=954,
+            input_letter_count=8000,
+            output_letter_count=1544,
+            model="gemini-2.5-flash"
         )
         response_dict = {
             "status_code": 201,

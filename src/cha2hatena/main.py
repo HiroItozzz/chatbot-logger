@@ -9,8 +9,8 @@ import yfinance as yf
 from . import hatenablog_poster, line_message
 from . import json_loader as jl
 from .llm import deepseek_client, gemini_client
+from .llm.llm_stats import TokenStats
 from .llm.conversational_ai import ConversationalAi
-from .llm.llm_fee import LlmFee
 from .setup import initialization
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ def summarize_and_upload(
     llm_client: ConversationalAi,
     hatena_secret_keys: dict,
     debug_mode: bool = False,
-) -> tuple[dict, dict]:
+) -> tuple[dict, TokenStats]:
     # GoogleへAPIリクエスト
     llm_outputs, llm_stats = llm_client.get_summary()
 
@@ -104,9 +104,7 @@ def main():
 
         input_paths = list(map(Path, INPUT_PATHS_RAW))
 
-        conversation = jl.json_loader(input_paths)
-
-        LLM_CONFIG["conversation"] = conversation
+        LLM_CONFIG["conversation"] = jl.json_loader(input_paths)
 
         # AIオブジェクト作成
         ai_instance = create_ai_client(LLM_CONFIG)
@@ -144,17 +142,11 @@ def main():
             logger.error("エラー：LINE通知は行われませんでした。")
             logger.info(f"詳細: {e}")
 
-        fee = LlmFee(LLM_CONFIG["model"])
-        i_fee = fee.calculate(llm_stats["input_tokens"], "input")
-        th_fee = fee.calculate(llm_stats["thoughts_tokens"], "thoughts")
-        o_fee = fee.calculate(llm_stats["output_tokens"], "output")
-        total_fee = i_fee + th_fee + o_fee
-
         # 為替レートを取得
         ticker = "USDJPY=X"
         try:
             dy_rate = yf.Ticker(ticker).history(period="1d").Close.iloc[0]
-            total_JPY = total_fee * dy_rate
+            total_JPY = llm_stats.total_fee * dy_rate
         except Exception as e:
             logger.error("ヤフーファイナンスから為替レートを取得できませんでした。詳細はapp.logを確認してください")
             logger.info(f"詳細: {e}", exc_info=True)
@@ -175,15 +167,15 @@ def main():
                 "prompt": LLM_CONFIG["prompt"][:20],
                 "model": LLM_CONFIG["model"],
                 "temperature": LLM_CONFIG["temperature"],
-                "input_letter_count": len(conversation),
-                "output_letter_count": llm_stats["output_letter_count"],
-                "input_tokens": llm_stats["input_tokens"],
-                "input_fee": i_fee,
-                "thoughts_tokens": llm_stats["thoughts_tokens"],
-                "thoughts_fee": th_fee,
-                "output_tokens": llm_stats["output_tokens"],
-                "output_fee": o_fee,
-                "total_fee (USD)": total_fee,
+                "input_letter_count": llm_stats.input_letter_count,
+                "output_letter_count": llm_stats.output_letter_count,
+                "input_tokens": llm_stats.input_tokens,
+                "input_fee": llm_stats.input_fee,
+                "thoughts_tokens": llm_stats.thoughts_tokens,
+                "thoughts_fee": llm_stats.thoughts_fee,
+                "output_tokens": llm_stats.output_tokens,
+                "output_fee": llm_stats.output_fee,
+                "total_fee (USD)": llm_stats.total_fee,
                 "total_fee (JPY)": total_JPY,
                 "api_key": "..." + LLM_CONFIG["api_key"][-5:],
             },

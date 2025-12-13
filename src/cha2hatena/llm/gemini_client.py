@@ -1,6 +1,7 @@
 import logging
 
 from .conversational_ai import BlogPost, ConversationalAi
+from .llm_stats import TokenStats
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +42,13 @@ class GeminiClient(ConversationalAi):
 
         data = super().check_response(response.text)
 
-        stats = {
-            "output_letter_count": len(response.text),
-            "input_tokens": response.usage_metadata.prompt_token_count,
-            "thoughts_tokens": response.usage_metadata.thoughts_token_count,
-            "output_tokens": response.usage_metadata.candidates_token_count,
-        }
+        stats = TokenStats(
+            response.usage_metadata.prompt_token_count,
+            response.usage_metadata.thoughts_token_count,
+            response.usage_metadata.candidates_token_count,
+            len(self.prompt),
+            len(response.text),
+            self.model
+        )
 
         return data, stats

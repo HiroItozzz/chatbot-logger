@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from .conversational_ai import BlogPost, ConversationalAi
+from .conversational_ai import BlogPost, ConversationalAi, TokenStats
 
 logger = logging.getLogger(__name__)
 
@@ -61,5 +61,14 @@ class DeepseekClient(ConversationalAi):
             "thoughts_tokens": int(thoughts_tokens),
             "output_tokens": int(response.usage.completion_tokens) - int(thoughts_tokens),
         }
+
+        stats = TokenStats(
+            response.usage.prompt_tokens,
+            getattr(response.usage.completion_tokens_details, "reasoning_tokens", 0),
+            response.usage.completion_tokens,
+            len(self.prompt),
+            len(generated_text),
+            self.model
+        )
 
         return data, stats

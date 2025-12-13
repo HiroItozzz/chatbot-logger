@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List
 
 from pydantic import BaseModel, Field
+from .llm_stats import TokenStats
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ class ConversationalAi(ABC):
         self.prompt = prompt + STATEMENT + "\n\n" + conversation
 
     @abstractmethod
-    def get_summary(self) -> tuple[dict, dict]:
+    def get_summary(self) -> tuple[dict, TokenStats]:
         pass
 
     def handle_server_error(self, i, max_retries):
