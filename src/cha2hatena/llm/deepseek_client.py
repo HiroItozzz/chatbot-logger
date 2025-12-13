@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from .conversational_ai import BlogPost, ConversationalAi
+from .conversational_ai import BlogPost, ConversationalAi, TokenStats
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +24,9 @@ class DeepseekClient(ConversationalAi):
                 response = client.chat.completions.create(
                     model=self.model,
                     temperature=self.temperature,
-                    messages=[{"role":"user", "content":self.prompt}],
-                    response_format={'type': 'json_object'},
-                    stream=False
+                    messages=[{"role": "user", "content": self.prompt}],
+                    response_format={"type": "json_object"},
+                    stream=False,
                 )
                 break
             except Exception as e:
@@ -51,15 +51,24 @@ class DeepseekClient(ConversationalAi):
                 else:
                     super().handle_unexpected_error(e)
 
-        generated_text = response.choices[0].message.content   
+        generated_text = response.choices[0].message.content
         data = super().check_response(generated_text)
 
-        thoughts_tokens = getattr(response.usage.completion_tokens_details,"reasoning_tokens", 0)
+        thoughts_tokens = getattr(response.usage.completion_tokens_details, "reasoning_tokens", 0)
         stats = {
             "output_letter_count": len(generated_text),
             "input_tokens": int(response.usage.prompt_tokens),
             "thoughts_tokens": int(thoughts_tokens),
             "output_tokens": int(response.usage.completion_tokens) - int(thoughts_tokens),
         }
+
+        stats = TokenStats(
+            response.usage.prompt_tokens,
+            getattr(response.usage.completion_tokens_details, "reasoning_tokens", 0),
+            response.usage.completion_tokens,
+            len(self.prompt),
+            len(generated_text),
+            self.model
+        )
 
         return data, stats

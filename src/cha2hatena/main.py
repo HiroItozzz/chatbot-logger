@@ -9,8 +9,8 @@ import yfinance as yf
 from . import hatenablog_poster, line_message
 from . import json_loader as jl
 from .llm import deepseek_client, gemini_client
-from .llm.conversational_ai import ConversationalAi
-from .llm.llm_fee import LlmFee
+from .llm.llm_stats import TokenStats
+from .llm.conversational_ai import ConversationalAi, LLMConfig
 from .setup import initialization
 
 logger = logging.getLogger(__name__)
@@ -25,26 +25,28 @@ except Exception as e:
 
 # グローバル定数
 PRESET_CATEGORIES = config["blog"]["preset_category"]
-LLM_CONFIG = {
-    "prompt": config["ai"]["prompt"],
-    "model": config["ai"]["model"],
-    "temperature": config["ai"]["temperature"],
-    "api_key": SECRET_KEYS.pop("API_KEY"),
-}
+LLM_CONFIG = LLMConfig(
+    prompt=config["ai"]["prompt"],
+    model=config["ai"]["model"],
+    temperature=config["ai"]["temperature"],
+    api_key=SECRET_KEYS.pop("API_KEY"),
+    conversation=""
+)
 LINE_ACCESS_TOKEN = SECRET_KEYS.pop("LINE_CHANNEL_ACCESS_TOKEN")
 HATENA_SECRET_KEYS = SECRET_KEYS
 
 
 ######################################################
 
-def create_ai_client(params):
-    if params["model"].startswith("gemini"):
-        client = gemini_client.GeminiClient(**params)
-    elif params["model"].startswith("deepseek"):
-        client = deepseek_client.DeepseekClient(**params)
+
+def create_ai_client(config: LLMConfig):
+    if config.model.startswith("gemini"):
+        client = gemini_client.GeminiClient(config)
+    elif config.model.startswith("deepseek"):
+        client = deepseek_client.DeepseekClient(config)
     else:
         logger.error("モデル名が正しくありません。実行を中止します。")
-        logger.error(f"モデル名: {params['model']}")
+        logger.error(f"モデル名: {config.model}")
     return client
     
 
@@ -53,7 +55,7 @@ def summarize_and_upload(
     llm_client: ConversationalAi,
     hatena_secret_keys: dict,
     debug_mode: bool = False,
-) -> tuple[dict, dict]:
+) -> tuple[dict, TokenStats]:
     # GoogleへAPIリクエスト
     llm_outputs, llm_stats = llm_client.get_summary()
 
@@ -104,17 +106,13 @@ def main():
 
         input_paths = list(map(Path, INPUT_PATHS_RAW))
 
-        conversation = jl.json_loader(input_paths)
-
-        LLM_CONFIG["conversation"] = conversation
+        LLM_CONFIG.conversation = jl.json_loader(input_paths)
 
         # AIオブジェクト作成
         ai_instance = create_ai_client(LLM_CONFIG)
 
         # Googleで要約取得 & はてなへ投稿
-        result, llm_stats = summarize_and_upload(
-            PRESET_CATEGORIES, ai_instance, HATENA_SECRET_KEYS, debug_mode=DEBUG
-        )
+        result, llm_stats = summarize_and_upload(PRESET_CATEGORIES, ai_instance, HATENA_SECRET_KEYS, debug_mode=DEBUG)
 
         url = result.get("link_alternate", "")
         url_edit = result.get("link_edit_user", "")
@@ -133,32 +131,27 @@ def main():
         # LINE通知
         if result["status_code"] == 201:
             line_text = "投稿完了です。今日も長い時間お疲れさまでした！\n"
-            line_text = line_text + f"タイトル：{title}\n確認: {url}\n編集: {url_edit}\n下書きモード: {result.get('is_draft')}"
+            line_text = (
+                line_text + f"タイトル：{title}\n確認: {url}\n編集: {url_edit}\n下書きモード: {result.get('is_draft')}"
+            )
         else:
             line_text = "要約の保存完了。ブログ投稿は行われませんでした。今日も長い時間お疲れ様でした。\n"
             line_text = line_text + f"タイトル：{title}\n本文: \n{content[:200]} ..."
-            
+
         try:
             line_message.line_messenger(line_text, LINE_ACCESS_TOKEN)
         except Exception as e:
             logger.error("エラー：LINE通知は行われませんでした。")
             logger.info(f"詳細: {e}")
 
-
-        fee = LlmFee(LLM_CONFIG["model"])
-        i_fee = fee.calculate(llm_stats["input_tokens"],"input")
-        th_fee = fee.calculate(llm_stats["thoughts_tokens"], "thoughts")
-        o_fee = fee.calculate(llm_stats["output_tokens"], "output")
-        total_fee = i_fee + th_fee + o_fee
-
         # 為替レートを取得
         ticker = "USDJPY=X"
         try:
             dy_rate = yf.Ticker(ticker).history(period="1d").Close.iloc[0]
-            total_JPY = total_fee * dy_rate
+            total_JPY = llm_stats.total_fee * dy_rate
         except Exception as e:
             logger.error("ヤフーファイナンスから為替レートを取得できませんでした。詳細はapp.logを確認してください")
-            logger.info(f"詳細: {e}",exc_info=True)
+            logger.info(f"詳細: {e}", exc_info=True)
             total_JPY = None
 
         ai_names = jl.ai_names_from_paths(input_paths)
@@ -173,20 +166,20 @@ def main():
                 "entry_title": title,
                 "entry_content": content[:30],
                 "categories": ",".join(categories),
-                "prompt": LLM_CONFIG["prompt"][:20],
-                "model": LLM_CONFIG["model"],
-                "temperature": LLM_CONFIG["temperature"],
-                "input_letter_count": len(conversation),
-                "output_letter_count": llm_stats["output_letter_count"],
-                "input_tokens": llm_stats["input_tokens"],
-                "input_fee": i_fee,
-                "thoughts_tokens": llm_stats["thoughts_tokens"],
-                "thoughts_fee": th_fee,
-                "output_tokens": llm_stats["output_tokens"],
-                "output_fee": o_fee,
-                "total_fee (USD)": total_fee,
+                "prompt": LLM_CONFIG.prompt[:20],
+                "model": LLM_CONFIG.model,
+                "temperature": LLM_CONFIG.temperature,
+                "input_letter_count": llm_stats.input_letter_count,
+                "output_letter_count": llm_stats.output_letter_count,
+                "input_tokens": llm_stats.input_tokens,
+                "input_fee": llm_stats.input_fee,
+                "thoughts_tokens": llm_stats.thoughts_tokens,
+                "thoughts_fee": llm_stats.thoughts_fee,
+                "output_tokens": llm_stats.output_tokens,
+                "output_fee": llm_stats.output_fee,
+                "total_fee (USD)": llm_stats.total_fee,
                 "total_fee (JPY)": total_JPY,
-                "api_key": "..." + LLM_CONFIG["api_key"][-5:],
+                "api_key": "..." + LLM_CONFIG.api_key[-5:],
             },
             index=["vals"],
         )

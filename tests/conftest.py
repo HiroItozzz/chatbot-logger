@@ -1,15 +1,15 @@
 import logging
 from datetime import datetime
+
 import pytest
 
 from cha2hatena import hatenablog_poster
-from cha2hatena.main import create_ai_client
-from cha2hatena.llm.gemini_client import GeminiClient
 from cha2hatena.llm.deepseek_client import DeepseekClient
-from cha2hatena.llm.llm_fee import LlmFee
+from cha2hatena.llm.gemini_client import GeminiClient
+from cha2hatena.llm.llm_stats import LlmFee, TokenStats
+from cha2hatena.main import create_ai_client
 
 logger = logging.getLogger()
-
 
 
 def mock_get_summary(monkeypatch):
@@ -20,26 +20,30 @@ def mock_get_summary(monkeypatch):
         temperature: float,
         prompt: str,
     ) -> tuple[dict, dict]:
-
         print("*" * 100)
         print("mockテスト: get_summary")
         print("*" * 100)
 
-        data = {"title": "テスト実行中",
-                "content":"これはget_summaryのモックです",
-                "categories":["カテゴリ1","カテゴリー2","カテゴリー3"]}
-
-        stats = {
-            "output_letter_count": 500,
-            "input_tokens": 1000,
-            "thoughts_tokens": 1500,
-            "output_tokens": 2000,
+        data = {
+            "title": "テスト実行中",
+            "content": "これはget_summaryのモックです",
+            "categories": ["カテゴリ1", "カテゴリー2", "カテゴリー3"],
         }
 
+        stats = TokenStats(
+            input_tokens=1000,
+            thoughts_tokens=1500,
+            output_tokens=2000,
+            input_letter_count=len(conversation),
+            output_letter_count=500,
+            model=model
+        )
+
         return data, stats
-    
+
     monkeypatch.setattr("cha2hatena.ai_client.get_summary", _gemini)
     return _gemini
+
 
 def __mock_summarize_and_upload(monkeypatch):
     def _summarize_and_upload(
@@ -47,7 +51,7 @@ def __mock_summarize_and_upload(monkeypatch):
         llm_config: dict,
         hatena_secret_keys: dict,
         debug_mode: bool = False,
-        ) -> tuple[dict, dict]:
+    ) -> tuple[dict, dict]:
         # GoogleへAPIリクエスト
         llm_outputs, llm_stats = create_ai_client(llm_config).get_summary()
 
@@ -61,8 +65,10 @@ def __mock_summarize_and_upload(monkeypatch):
             is_draft=debug_mode,  # デバッグ時は下書き
         )
         return response_dict, llm_stats
+
     monkeypatch.setattr("cha2hatena.main.summarize_and_upload", _summarize_and_upload)
     return _summarize_and_upload
+
 
 def __test_aiclient(monkeypatch):
     def create_ai_client(params):
@@ -74,8 +80,10 @@ def __test_aiclient(monkeypatch):
             logger.error("モデル名が正しくありません。実行を中止します。")
             logger.error(f"モデル名: {params['model']}")
         return client
+
     monkeypatch.setattr("cha2hatena.main.hinge", create_ai_client)
     return create_ai_client
+
 
 @pytest.fixture
 def __2_mock_summarize_and_upload(monkeypatch):
@@ -86,10 +94,15 @@ def __2_mock_summarize_and_upload(monkeypatch):
         debug_mode: bool = False,
     ) -> tuple[dict, dict]:
         # GoogleへAPIリクエスト
-        llm_outputs, llm_stats = (
-                {"title": "mock", "content": "mock", "categories": ["mock"]},
-                {"input_tokens": 10000, "output_tokens": 954, "thoughts_tokens": 1010, "output_letter_count": 1544},
-            )
+        llm_outputs = {"title": "mock", "content": "mock", "categories": ["mock"]}
+        llm_stats = TokenStats(
+            input_tokens=10000,
+            thoughts_tokens=1010,
+            output_tokens=954,
+            input_letter_count=8000,
+            output_letter_count=1544,
+            model="gemini-2.5-flash"
+        )
         response_dict = {
             "status_code": 201,
             # Atom名前空間の要素
@@ -97,10 +110,11 @@ def __2_mock_summarize_and_upload(monkeypatch):
             "content": "内容はこちら",
             "link_edit_user": "URL_edit",
             "link_alternate": "URL_normal",
-            "categories": ["cat1","cat2"],
+            "categories": ["cat1", "cat2"],
             # app名前空間の要素
             "is_draft": None,
         }
         return response_dict, llm_stats
-    monkeypatch.setattr("cha2hatena.main.summarize_and_upload",_mock_summarize_and_upload)
+
+    monkeypatch.setattr("cha2hatena.main.summarize_and_upload", _mock_summarize_and_upload)
     return _mock_summarize_and_upload
