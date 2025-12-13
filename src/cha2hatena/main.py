@@ -10,7 +10,7 @@ from . import hatenablog_poster, line_message
 from . import json_loader as jl
 from .llm import deepseek_client, gemini_client
 from .llm.llm_stats import TokenStats
-from .llm.conversational_ai import ConversationalAi
+from .llm.conversational_ai import ConversationalAi, LLMConfig
 from .setup import initialization
 
 logger = logging.getLogger(__name__)
@@ -25,12 +25,13 @@ except Exception as e:
 
 # グローバル定数
 PRESET_CATEGORIES = config["blog"]["preset_category"]
-LLM_CONFIG = {
-    "prompt": config["ai"]["prompt"],
-    "model": config["ai"]["model"],
-    "temperature": config["ai"]["temperature"],
-    "api_key": SECRET_KEYS.pop("API_KEY"),
-}
+LLM_CONFIG = LLMConfig(
+    prompt=config["ai"]["prompt"],
+    model=config["ai"]["model"],
+    temperature=config["ai"]["temperature"],
+    api_key=SECRET_KEYS.pop("API_KEY"),
+    conversation=""
+)
 LINE_ACCESS_TOKEN = SECRET_KEYS.pop("LINE_CHANNEL_ACCESS_TOKEN")
 HATENA_SECRET_KEYS = SECRET_KEYS
 
@@ -38,14 +39,14 @@ HATENA_SECRET_KEYS = SECRET_KEYS
 ######################################################
 
 
-def create_ai_client(params):
-    if params["model"].startswith("gemini"):
-        client = gemini_client.GeminiClient(**params)
-    elif params["model"].startswith("deepseek"):
-        client = deepseek_client.DeepseekClient(**params)
+def create_ai_client(config: LLMConfig):
+    if config.model.startswith("gemini"):
+        client = gemini_client.GeminiClient(config)
+    elif config.model.startswith("deepseek"):
+        client = deepseek_client.DeepseekClient(config)
     else:
         logger.error("モデル名が正しくありません。実行を中止します。")
-        logger.error(f"モデル名: {params['model']}")
+        logger.error(f"モデル名: {config.model}")
     return client
 
 
@@ -104,7 +105,7 @@ def main():
 
         input_paths = list(map(Path, INPUT_PATHS_RAW))
 
-        LLM_CONFIG["conversation"] = jl.json_loader(input_paths)
+        LLM_CONFIG.conversation = jl.json_loader(input_paths)
 
         # AIオブジェクト作成
         ai_instance = create_ai_client(LLM_CONFIG)
@@ -164,9 +165,9 @@ def main():
                 "entry_title": title,
                 "entry_content": content[:30],
                 "categories": ",".join(categories),
-                "prompt": LLM_CONFIG["prompt"][:20],
-                "model": LLM_CONFIG["model"],
-                "temperature": LLM_CONFIG["temperature"],
+                "prompt": LLM_CONFIG.prompt[:20],
+                "model": LLM_CONFIG.model,
+                "temperature": LLM_CONFIG.temperature,
                 "input_letter_count": llm_stats.input_letter_count,
                 "output_letter_count": llm_stats.output_letter_count,
                 "input_tokens": llm_stats.input_tokens,
@@ -177,7 +178,7 @@ def main():
                 "output_fee": llm_stats.output_fee,
                 "total_fee (USD)": llm_stats.total_fee,
                 "total_fee (JPY)": total_JPY,
-                "api_key": "..." + LLM_CONFIG["api_key"][-5:],
+                "api_key": "..." + LLM_CONFIG.api_key[-5:],
             },
             index=["vals"],
         )

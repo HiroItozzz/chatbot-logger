@@ -11,28 +11,14 @@ logger = logging.getLogger(__name__)
 load_dotenv(override=True)
 
 
-def get_nested_config(config_dict: dict, key_path: Path) -> str | None:
-    """ネストした設定値を取得 (例: 'ai.model' -> config['ai']['model'])"""
-
-    keys = key_path.split(".")
-    value = config_dict
-    try:
-        for key in keys:
-            value = value[key]
-        return value
-    except (KeyError, TypeError):
-        return None
-
-
 def config_validation(config_dict: dict, secret_keys: dict) -> tuple[dict, dict]:
     """設定ファイルとAPIキーの妥当性を検証"""
 
-    required_keys = ["ai.model", "ai.prompt", "paths.output_dir", "other.debug"]
-
-    # 必須キーの存在確認
-    for key in required_keys:
-        if get_nested_config(config_dict, key) is None:
-            raise ValueError(f"{key}が見つかりません。config.yamlで設定をする必要があります。")
+    # output_dirのデフォルト値設定
+    if not config_dict.get("paths", {}).get("output_dir"):
+        if "paths" not in config_dict:
+            config_dict["paths"] = {}
+        config_dict["paths"]["output_dir"] = "outputs"
 
     # API_KEYの検証
     for idx, (name, secret_key) in enumerate(secret_keys.items()):
@@ -50,20 +36,6 @@ def config_validation(config_dict: dict, secret_keys: dict) -> tuple[dict, dict]
                 break
             else:
                 logger.warning(f"{name}が見つかりませんでした。要約をはてなブログへ投稿します。")
-
-    """
-    # thoughts_levelの範囲チェック
-    thoughts_level = config_dict["ai"]["thoughts_level"]
-    if thoughts_level is not None and not (-1 <= thoughts_level <= 24576):
-        raise ValueError("ai.thoughts_level must be between -1 and 24576")
-    elif (0 <= thoughts_level < 128) and config_dict["ai"]["model"] == "gemini-2.5-pro":
-        raise ValueError("ai.thoughts_level must be between 128 and 24576 or -1 forgemini-2.5-pro ")
-    """
-
-    # temperatureの範囲チェック
-    temperature = config_dict["ai"]["temperature"]
-    if temperature is not None and not (0 <= temperature <= 2.0):
-        raise ValueError("ai.temperature must be between 0 and 2.0")
 
     return config_dict, secret_keys
 
@@ -83,13 +55,18 @@ def config_setup() -> tuple[dict, dict]:
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML syntax in config file: {e}")
 
-    if config["ai"]["model"].startswith("deepseek"):
+    try:
+        model = config["ai"]["model"]
+    except KeyError:
+        raise ValueError("ai.modelが設定されていません。config.yamlで設定してください。")
+    
+    if model.startswith("deepseek"):
         api_key = os.getenv("DEEPSEEK_API_KEY", "")
-    elif config["ai"]["model"].startswith("gemini"):
+    elif model.startswith("gemini"):
         api_key = os.getenv("GEMINI_API_KEY", "")
     else:
         logging.critical("モデル名が正しくありません。実行を中止します。")
-        logging.critical(f"モデル名：{config['ai']['model']}")
+        logging.critical(f"モデル名：{model}")
 
     secret_keys = {
         "API_KEY": api_key,
@@ -144,7 +121,7 @@ def initialization(logger: logging.Logger) -> tuple:
     config, secret_keys = config_setup()
 
     # DEBUGモード・ログレベル判定
-    DEBUG_CONFIG = config["other"]["debug"].lower() in ("true", "1", "t")
+    DEBUG_CONFIG = config.get("other", {}).get("debug").lower() in ("true", "1", "t")
     DEBUG = DEBUG_ENV if DEBUG_ENV else DEBUG_CONFIG
     if DEBUG and not DEBUG_ENV:
         stream_handler.setLevel(logging.DEBUG)

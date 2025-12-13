@@ -11,15 +11,15 @@ from .llm_stats import TokenStats
 
 logger = logging.getLogger(__name__)
 
-"""
-LLM_CONFIG = {
-    "prompt": config["ai"]["prompt"],
-    "model": config["ai"]["model"],
-    "temperature": config["ai"]["temperature"],
-    "api_key": SECRET_KEYS.pop("GEMINI_API_KEY"),
-    "conversation" : conversation
-}
-"""
+
+class LLMConfig(BaseModel):
+    prompt: str = Field(min_length=1, description="AIに送るプロンプト")
+    model: str = Field(pattern=r"^(gemini|deepseek)-.+", default="gemini-2.5-flash", description="使用するLLMモデル")
+    temperature: float = Field(ge=0, le=2.0, default=1.1, description="生成時の温度パラメータ")
+    api_key: str = Field(min_length=1, description="API キー")
+    conversation: str = Field(default="", description="会話ログ")
+
+
 # llm_outputs, llm_stats = hinge(llm_config)
 # llm_outputs = {title: , content: , categories:}
 # llm_stats = {input_tokens:, thoughts_tokens:, output_tokens:}
@@ -32,15 +32,15 @@ class BlogPost(BaseModel):
 
 
 class ConversationalAi(ABC):
-    def __init__(self, model: str, api_key: str, conversation: str, prompt: str, temperature: float = 1.1):
-        self.model = model or "gemini-2.5-flash"
-        self.api_key = api_key
-        self.temperature = temperature
+    def __init__(self, config: LLMConfig):
+        self.model = config.model
+        self.api_key = config.api_key
+        self.temperature = config.temperature
         self.company_name = "Google" if self.model.startswith("gemini") else "Deepseek"
         STATEMENT = (
             f"またその最後には、「この記事は {self.model} により自動生成されています」と目立つように注記してください。"
         )
-        self.prompt = prompt + STATEMENT + "\n\n" + conversation
+        self.prompt = config.prompt + STATEMENT + "\n\n" + config.conversation
 
     @abstractmethod
     def get_summary(self) -> tuple[dict, TokenStats]:
