@@ -49,3 +49,9 @@ cha2hatena = "cha2hatena.main:main"
 
 [tool.ruff]
 line-length = 120
+target-version = "py313"
+
+[tool.ruff.format]
+# 個別フォーマット設定
+docstring-code-format = true
+docstring-code-line-length = 80
