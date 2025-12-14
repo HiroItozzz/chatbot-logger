@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 class DeepseekClient(ConversationalAi):
-    def get_summary(self) -> tuple[dict, dict]:
+    def get_summary(self) -> tuple[dict, TokenStats]:
         from openai import OpenAI
 
         statement = f"次の行から示すプロンプトはこのPydanticモデルに合うJSONで出力してください: {BlogPost.model_json_schema()}\n"
@@ -53,14 +53,6 @@ class DeepseekClient(ConversationalAi):
 
         generated_text = response.choices[0].message.content
         data = super().check_response(generated_text)
-
-        thoughts_tokens = getattr(response.usage.completion_tokens_details, "reasoning_tokens", 0)
-        stats = {
-            "output_letter_count": len(generated_text),
-            "input_tokens": int(response.usage.prompt_tokens),
-            "thoughts_tokens": int(thoughts_tokens),
-            "output_tokens": int(response.usage.completion_tokens) - int(thoughts_tokens),
-        }
 
         stats = TokenStats(
             response.usage.prompt_tokens,
