@@ -143,7 +143,7 @@ python -m cha2hatena path/to/conversation.json
 - 鍵の一元管理（`setup.py`）
 - 使用トークンを保持するクラス(`TokenStats`)のプロパティの構成
   - 初期化時はトークン数のみ入力。実コスト(米ドル換算)は`@property`で遅延計算
-
+  
 ## このプロジェクトで学んだこと
 - HTTPメソッドとRESTの考え方
 - HTTPレスポンスコードによる場合分けの仕方

@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import List
 
 from pydantic import BaseModel, Field
-
 from .llm_stats import TokenStats
 
 logger = logging.getLogger(__name__)
@@ -76,7 +75,6 @@ class ConversationalAi(ABC):
                 logger.warning(f"{self.model}が構造化出力に成功")
         except Exception:
             logger.error(f"{self.model}が構造化出力に失敗。")
-
             output_path = Path.cwd() / "outputs"
             output_path.mkdir(exist_ok=True)
             file_path = output_path / "__summary.txt"
