@@ -7,6 +7,8 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
+from .llm.conversational_ai import LlmConfig
+
 logger = logging.getLogger(__name__)
 load_dotenv(override=True)
 
@@ -120,6 +122,14 @@ def initialization(logger: logging.Logger) -> tuple:
     # 設定読み込み
     config, secret_keys = config_setup()
 
+    llm_config = LlmConfig(
+    prompt=config["ai"]["prompt"],
+    model=config["ai"]["model"],
+    temperature=config["ai"]["temperature"],
+    api_key=secret_keys.pop("API_KEY"),
+    conversation=""
+)
+
     # DEBUGモード・ログレベル判定
     DEBUG_CONFIG = config.get("other", {}).get("debug").lower() in ("true", "1", "t")
     DEBUG = DEBUG_ENV if DEBUG_ENV else DEBUG_CONFIG
@@ -127,4 +137,4 @@ def initialization(logger: logging.Logger) -> tuple:
         stream_handler.setLevel(logging.DEBUG)
         stream_handler.setFormatter(logging.Formatter("%(levelname)s - %(name)s - %(message)s"))
 
-    return DEBUG, secret_keys, config
+    return DEBUG, secret_keys, llm_config, config

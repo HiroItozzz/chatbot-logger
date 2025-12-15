@@ -9,29 +9,21 @@ import yfinance as yf
 from . import hatenablog_poster, line_message
 from . import json_loader as jl
 from .llm import deepseek_client, gemini_client
+from .llm.conversational_ai import ConversationalAi, LlmConfig
 from .llm.llm_stats import TokenStats
-from .llm.conversational_ai import ConversationalAi, LLMConfig
 from .setup import initialization
 
 logger = logging.getLogger(__name__)
 parent_logger = logging.getLogger("cha2hatena")
 
 try:
-    DEBUG, SECRET_KEYS, config = initialization(parent_logger)
+    DEBUG, SECRET_KEYS, LLM_CONFIG, config = initialization(parent_logger)
 except Exception as e:
     logger.critical(f"初期設定が正常に行われませんでした: {e}", exc_info=True)
     sys.exit(1)
 
 
-# グローバル定数
 PRESET_CATEGORIES = config["blog"]["preset_category"]
-LLM_CONFIG = LLMConfig(
-    prompt=config["ai"]["prompt"],
-    model=config["ai"]["model"],
-    temperature=config["ai"]["temperature"],
-    api_key=SECRET_KEYS.pop("API_KEY"),
-    conversation=""
-)
 LINE_ACCESS_TOKEN = SECRET_KEYS.pop("LINE_CHANNEL_ACCESS_TOKEN")
 HATENA_SECRET_KEYS = SECRET_KEYS
 
@@ -39,7 +31,7 @@ HATENA_SECRET_KEYS = SECRET_KEYS
 ######################################################
 
 
-def create_ai_client(config: LLMConfig):
+def create_ai_client(config: LlmConfig):
     if config.model.startswith("gemini"):
         client = gemini_client.GeminiClient(config)
     elif config.model.startswith("deepseek"):
@@ -48,7 +40,6 @@ def create_ai_client(config: LLMConfig):
         logger.error("モデル名が正しくありません。実行を中止します。")
         logger.error(f"モデル名: {config.model}")
     return client
-    
 
 def summarize_and_upload(
     preset_categories: list,

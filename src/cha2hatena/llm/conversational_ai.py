@@ -12,12 +12,12 @@ from .llm_stats import TokenStats
 logger = logging.getLogger(__name__)
 
 
-class LLMConfig(BaseModel):
+class LlmConfig(BaseModel):
     prompt: str = Field(min_length=1, description="AIに送るプロンプト")
     model: str = Field(pattern=r"^(gemini|deepseek)-.+", default="gemini-2.5-flash", description="使用するLLMモデル")
     temperature: float = Field(ge=0, le=2.0, default=1.1, description="生成時の温度パラメータ")
     api_key: str = Field(min_length=1, description="API キー")
-    conversation: str = Field(default="", description="会話ログ")
+    conversation: str = Field(description="会話ログ")
 
 
 # llm_outputs, llm_stats = hinge(llm_config)
@@ -32,7 +32,7 @@ class BlogPost(BaseModel):
 
 
 class ConversationalAi(ABC):
-    def __init__(self, config: LLMConfig):
+    def __init__(self, config: LlmConfig):
         self.model = config.model
         self.api_key = config.api_key
         self.temperature = config.temperature
