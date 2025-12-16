@@ -87,33 +87,42 @@ def json_loader(paths: list[Path,]) -> str:
     for idx, (path, ai_name) in enumerate(zip(paths, ai_names), 1):
         logger.warning(f"{idx}個目のファイルを読み込みます: {path.name}")
 
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            messages = data["messages"]
-        except KeyError as e:
-            raise KeyError(f"エラー： jsonファイルの構成を確認してください - {path}") from e
-        except json.JSONDecodeError as e:
-            raise ValueError(f"エラー：ファイル形式を確認してください - {path.name}") from e
+        if path.suffix == ".json":
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                messages = data["messages"]
+            except KeyError as e:
+                raise KeyError(f"エラー： jsonファイルの構成を確認してください - {path}") from e
+            except json.JSONDecodeError as e:
+                raise ValueError(f"エラー：ファイル形式を確認してください - {path.name}") from e
 
-        # 会話の抽出→文字列へ
-        try:
-            logs, timestamp = convert_to_str(messages, ai_name)
-        except KeyError as e:
-            raise KeyError(f"エラー： jsonファイルの構成を確認してください - {path}") from e
+            # 会話の抽出→文字列へ
+            try:
+                logs, timestamp = convert_to_str(messages, ai_name)
+            except KeyError as e:
+                raise KeyError(f"エラー： jsonファイルの構成を確認してください - {path}") from e
 
-        if timestamp is None:
-            print(f"{path.name}の会話履歴に時刻情報がありません。すべての会話を取得しました。")
+            if timestamp is None:
+                print(f"{path.name}の会話履歴に時刻情報がありません。すべての会話を取得しました。")
 
-        logs.append(f"{'=' * 20} {idx}個目の会話 {'=' * 20}\n\n")
-        conversation = "\n".join(logs[::-1])  # 順番を戻す
+            logs.append(f"{'=' * 20} {idx}個目の会話 {'=' * 20}\n\n")
+            conversation = "\n".join(logs[::-1])  # 順番を戻す
+                
+            logger.warning(f"{len(logs) - 1}件の発言を取得: {path.name}")
+            print(f"{'=' * 25}最初のメッセージ{'=' * 25}\n{logs[-2][:100]}")
+            print(f"{'=' * 25}最後のメッセージ{'=' * 25}\n{logs[0][:100]}")
+            print("=" * 60)
+
+        elif path.suffix == ".txt":
+            conversation = f"{'=' * 20} {idx}個目の会話 {'=' * 20}\n\n"
+            conversation += path.read_text(encoding="utf-8")
+
+        else:
+            raise ValueError(f"エラー：対応していないファイル形式です - {path.name}")
 
         conversations.append(conversation)
         ai_names.append(ai_name)
 
-        logger.warning(f"{len(logs) - 1}件の発言を取得: {path.name}")
-        print(f"{'=' * 25}最初のメッセージ{'=' * 25}\n{logs[-2][:100]}")
-        print(f"{'=' * 25}最後のメッセージ{'=' * 25}\n{logs[0][:100]}")
-        print("=" * 60)
 
     logger.warning(f"☑ {len(paths)}件のjsonファイルをテキストに変換しました。\n")
 

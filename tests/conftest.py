@@ -48,36 +48,3 @@ def mock_create_ai_client(monkeypatch):
     return _mock_create
 
 
-
-def __2_mock_summarize_and_upload(monkeypatch):
-    def _mock_summarize_and_upload(
-        preset_categories: list,
-        llm_config: dict,
-        hatena_secret_keys: dict,
-        debug_mode: bool = False,
-    ) -> tuple[dict, dict]:
-        # GoogleへAPIリクエスト
-        llm_outputs = {"title": "mock", "content": "mock", "categories": ["mock"]}
-        llm_stats = TokenStats(
-            input_tokens=10000,
-            thoughts_tokens=1010,
-            output_tokens=954,
-            input_letter_count=8000,
-            output_letter_count=1544,
-            model="gemini-2.5-flash"
-        )
-        response_dict = {
-            "status_code": 201,
-            # Atom名前空間の要素
-            "title": "タイトル",  # XML名前空間の実体
-            "content": "内容はこちら",
-            "link_edit_user": "URL_edit",
-            "link_alternate": "URL_normal",
-            "categories": ["cat1", "cat2"],
-            # app名前空間の要素
-            "is_draft": None,
-        }
-        return response_dict, llm_stats
-
-    monkeypatch.setattr("cha2hatena.main.summarize_and_upload", _mock_summarize_and_upload)
-    return _mock_summarize_and_upload
