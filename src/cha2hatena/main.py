@@ -75,6 +75,7 @@ def main():
 
         input_paths = list(map(Path, INPUT_PATHS_RAW))
 
+        # JSONファイルから会話履歴を読み込み、テキストに整形
         LLM_CONFIG.conversation = jl.json_loader(input_paths)
 
         # AIオブジェクト作成
